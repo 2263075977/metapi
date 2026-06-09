@@ -153,15 +153,11 @@ The AI ecosystem is seeing a growing number of aggregation relay stations based 
       <div><b>Usage Logs</b> — Proxy request logs and cost breakdown</div>
     </td>
     <td align="center">
-      <img src="docs/screenshots/monitor.png" alt="monitor" style="width:100%;height:auto;"/>
-      <div><b>Availability Monitor</b> — Channel health real-time monitoring</div>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
       <img src="docs/screenshots/settings.png" alt="settings" style="width:100%;height:auto;"/>
       <div><b>System Settings</b> — Global parameters and security configuration</div>
     </td>
+  </tr>
+  <tr>
     <td align="center">
       <img src="docs/screenshots/notification-settings.png" alt="notification-settings" style="width:100%;height:auto;"/>
       <div><b>Notification Settings</b> — Multi-channel alert and push configuration</div>

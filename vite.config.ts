@@ -37,10 +37,6 @@ export default defineConfig(({ mode }) => {
           target: proxyTarget,
           changeOrigin: true,
         },
-        '^/monitor-proxy($|/)': {
-          target: proxyTarget,
-          changeOrigin: true,
-        },
         '^/v1($|/)': {
           target: proxyTarget,
           changeOrigin: true,
