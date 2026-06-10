@@ -17,20 +17,14 @@ into <strong>one API Key, one endpoint</strong>, with automatic model discovery,
 </p>
 
 <p align="center">
-<a href="https://github.com/cita-777/metapi/releases">
-  <img alt="GitHub Release" src="https://img.shields.io/github/v/release/cita-777/metapi?label=Release&logo=github&style=flat">
-</a><!--
---><a href="https://github.com/cita-777/metapi/stargazers">
+<a href="https://github.com/cita-777/metapi/stargazers">
   <img alt="GitHub Stars" src="https://img.shields.io/github/stars/cita-777/metapi?style=flat&logo=github&label=Stars">
 </a><!--
 --><a href="https://deepwiki.com/cita-777/metapi">
   <img alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg">
 </a><!--
---><a href="https://hub.docker.com/r/1467078763/metapi">
-  <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/1467078763/metapi?style=flat&logo=docker&label=Docker%20Pulls">
-</a><!--
---><a href="https://hub.docker.com/r/1467078763/metapi">
-  <img alt="Docker Image" src="https://img.shields.io/badge/docker-1467078763%2Fmetapi-blue?logo=docker&style=flat">
+--><a href="https://github.com/2263075977/metapi/pkgs/container/metapi">
+  <img alt="Docker Image" src="https://img.shields.io/badge/GHCR-ghcr.io%2F2263075977%2Fmetapi-blue?logo=github&style=flat">
 </a><!--
 --><a href="LICENSE">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-brightgreen?style=flat">
@@ -292,7 +286,7 @@ Alert scenarios: low balance warning, site/account anomalies, check-in failures,
 ### Lightweight Deployment
 
 - **Single Docker container** with a default local data directory, plus optional external MySQL / PostgreSQL runtime DB
-- Docker images support `amd64`, `arm64`, and `armv7l` (`linux/arm/v7`) server deployments
+- The personal GHCR image publishes `linux/amd64` by default for Synology DS920+ / x86_64 NAS / common cloud servers
 - Full data import/export for worry-free migration
 
 ---
@@ -307,7 +301,7 @@ mkdir metapi && cd metapi
 cat > docker-compose.yml << 'EOF'
 services:
   metapi:
-    image: 1467078763/metapi:latest
+    image: ghcr.io/2263075977/metapi:latest
     ports:
       - "4000:4000"
     volumes:
@@ -342,7 +336,7 @@ docker run -d --name metapi \
   -e TZ=Asia/Shanghai \
   -v ./data:/app/data \
   --restart unless-stopped \
-  1467078763/metapi:latest
+  ghcr.io/2263075977/metapi:latest
 ```
 
 </details>
@@ -350,9 +344,7 @@ docker run -d --name metapi \
 After starting, visit `http://localhost:4000` and log in with your `AUTH_TOKEN`!
 
 > [!NOTE]
-> Docker images support `amd64`, `arm64`, and `armv7l` (`linux/arm/v7`) server deployments.
-> Current `armv7l` support is limited to server / Docker usage and does not include Electron desktop packaging support.
-> Synology DS920+ can use the `linux/amd64` image. A personal fork can publish versioned images to a dedicated GHCR package with GitHub Actions, for example `ghcr.io/2263075977/metapi-synology:v1.3.0`.
+> The personal GHCR image is published as `linux/amd64`; Synology DS920+ can pull `ghcr.io/2263075977/metapi:latest` directly.
 
 <!-- markdownlint-disable-next-line MD028 -->
 > [!IMPORTANT]
@@ -361,10 +353,9 @@ After starting, visit `http://localhost:4000` and log in with your `AUTH_TOKEN`!
 > [!TIP]
 > The initial admin token is the `AUTH_TOKEN` configured at startup.
 > If running outside Compose without explicitly setting `AUTH_TOKEN`, the default is `change-me-admin-token` (for local debugging only).
-> The desktop installer falls into this category on first launch too: if you do not inject `AUTH_TOKEN`, the default admin token is also `change-me-admin-token`.
 > If you change the admin token in the Settings panel, use the new token for subsequent logins.
 
-For Docker Compose, desktop installers, reverse proxy, upgrades, and database options, see [Deployment Guide](docs/deployment.md).
+For Docker Compose, reverse proxy, upgrades, and database options, see [Deployment Guide](docs/deployment.md).
 
 ---
 
@@ -510,7 +501,6 @@ npm run dev
 npm run build          # Build frontend + backend
 npm run build:web      # Build frontend only (Vite)
 npm run build:server   # Build backend only (TypeScript)
-npm run dist:desktop:mac:intel # Build mac Intel (x64) desktop installer
 npm test               # Run all tests
 npm run test:watch     # Watch mode
 npm run db:generate    # Generate Drizzle migration files

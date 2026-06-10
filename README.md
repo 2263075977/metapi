@@ -12,17 +12,15 @@
 
 
 <p align="center">
-<a href="https://github.com/cita-777/metapi/releases">
-  <img alt="GitHub Release" src="https://img.shields.io/github/v/release/cita-777/metapi?label=Release&logo=github&style=flat">
-</a><a href="https://github.com/cita-777/metapi/stargazers">
+<a href="https://github.com/cita-777/metapi/stargazers">
   <img alt="GitHub Stars" src="https://img.shields.io/github/stars/cita-777/metapi?style=flat&logo=github&label=Stars">
 </a><a href="https://atomgit.com/cita-777/metapi">
   <img alt="AtomGit Stars" src="https://atomgit.com/cita-777/metapi/star/badge.svg">
 </a><a href="https://deepwiki.com/cita-777/metapi">
   <img alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg">
-</a><a href="https://hub.docker.com/r/1467078763/metapi">
-  <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/1467078763/metapi?style=flat&logo=docker&label=Docker%20Pulls">
-</a><a href="https://hub.docker.com/r/1467078763/metapi">
+</a><a href="https://github.com/2263075977/metapi/pkgs/container/metapi">
+  <img alt="Docker Image" src="https://img.shields.io/badge/GHCR-ghcr.io%2F2263075977%2Fmetapi-blue?logo=github&style=flat">
+</a><a href="LICENSE">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-brightgreen?style=flat">
 </a><img alt="Node.js" src="https://img.shields.io/badge/Node.js-22.15%2B-339933?logo=node.js&style=flat"><img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&style=flat"><a href="https://zeabur.com/templates/DOX5PR">
   <img alt="Deploy on Zeabur" src="https://zeabur.com/button.svg" height="28">
@@ -269,7 +267,7 @@
 ### 📦 轻量部署
 
 - **单 Docker 容器**，默认本地数据目录部署，支持外接 MySQL / PostgreSQL 运行时数据库
-- Docker 镜像支持 `amd64`、`arm64` 和 `armv7l`（`linux/arm/v7`）服务端部署
+- 个人 GHCR 镜像默认发布 `linux/amd64`，适合群晖 DS920+ / x86_64 NAS / 常见云服务器
 - 数据完整导入导出，迁移无忧
 
 ---
@@ -291,7 +289,7 @@ mkdir metapi && cd metapi
 cat > docker-compose.yml << 'EOF'
 services:
   metapi:
-    image: 1467078763/metapi:latest
+    image: ghcr.io/2263075977/metapi:latest
     ports:
       - "4000:4000"
     volumes:
@@ -326,7 +324,7 @@ docker run -d --name metapi \
   -e TZ=Asia/Shanghai \
   -v ./data:/app/data \
   --restart unless-stopped \
-  1467078763/metapi:latest
+  ghcr.io/2263075977/metapi:latest
 ```
 
 </details>
@@ -334,9 +332,7 @@ docker run -d --name metapi \
 启动后访问 `http://localhost:4000`，用 `AUTH_TOKEN` 登录即可。
 
 > [!NOTE]
-> Docker 镜像支持 `amd64`、`arm64` 和 `armv7l`（`linux/arm/v7`）服务端部署。
-> 当前 `armv7l` 支持范围仅限服务端 / Docker 运行，不包含桌面安装包。
-> 群晖 DS920+ 可使用 `linux/amd64` 镜像；个人仓库也可以通过 GitHub Actions 发布版本镜像到独立 GHCR package，例如 `ghcr.io/2263075977/metapi-synology:v1.3.0`。
+> 当前个人 GHCR 镜像发布为 `linux/amd64`，群晖 DS920+ 可直接拉取 `ghcr.io/2263075977/metapi:latest`。
 
 <!-- markdownlint-disable-next-line MD028 -->
 > [!IMPORTANT]
@@ -345,10 +341,9 @@ docker run -d --name metapi \
 > [!TIP]
 > 初始管理员令牌即启动时配置的 `AUTH_TOKEN`。
 > 若在 Compose 外运行且未显式设置 `AUTH_TOKEN`，默认为 `change-me-admin-token`（仅用于本地调试）。
-> 桌面安装包首次启动也属于这类场景：如果你没有额外注入 `AUTH_TOKEN`，默认管理员令牌同样是 `change-me-admin-token`。
 > 如果在「设置」面板中修改了管理员令牌，后续登录请使用新令牌。
 
-Docker Compose、桌面安装包、反向代理、升级与数据库选项等详见 [部署指南](https://metapi.cita777.me/deployment)。
+Docker Compose、反向代理、升级与数据库选项等详见 [部署指南](https://metapi.cita777.me/deployment)。
 
 📖 **[环境变量与配置](https://metapi.cita777.me/configuration)** · **[客户端接入指南](https://metapi.cita777.me/client-integration)** · **[常见问题](https://metapi.cita777.me/faq)**
 
@@ -387,7 +382,6 @@ npm run dev
 npm run build          # 构建前端 + 后端
 npm run build:web      # 仅构建前端（Vite）
 npm run build:server   # 仅构建后端（TypeScript）
-npm run dist:desktop:mac:intel # 构建 mac Intel (x64) 桌面安装包
 npm test               # 运行全部测试
 npm run test:watch     # 监听模式
 npm run db:generate    # 生成 Drizzle 迁移文件

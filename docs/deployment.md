@@ -10,12 +10,11 @@
 |------|----------|--------------|----------|
 | 云服务器 / NAS / 家用主机长期运行 | Docker / Docker Compose / Zeabur | 固定服务地址，例如 `http://your-host:4000` 或反向代理域名 | 你挂载的 `DATA_DIR` / 持久化卷 |
 | 免费云部署（24h 在线） | Render + TiDB + UptimeRobot | Render 分配的 `.onrender.com` 域名或自定义域名 | TiDB Serverless（外部 MySQL 数据库） |
-| 个人电脑本地使用 | 桌面版安装包 | 桌面窗口；默认本机客户端直连使用 `http://127.0.0.1:4000`，局域网客户端可使用当前机器 IP + `4000`；如有覆盖则按 `METAPI_DESKTOP_SERVER_PORT` 的实际端口访问 | Electron `app.getPath('userData')/data` |
 | 二次开发 / 调试 | 本地开发 | 前端 `http://localhost:5173`，后端默认 `http://localhost:4000` | 仓库内 `./data` 或自定义 `DATA_DIR` |
 
 > [!NOTE]
-> - 当前不再提供 `Release` 压缩包 + Node.js 运行时的独立部署路径。
-> - 生产/长期运行请用 Docker 系列方案；桌面版面向单机本地使用；源码运行请走本地开发流程。
+> - 当前不再提供桌面安装包或 `Release` 压缩包 + Node.js 运行时的独立部署路径。
+> - 生产/长期运行请用 Docker 系列方案；源码运行只用于二次开发或调试。
 
 ## K3s / Helm 更新中心
 
@@ -36,7 +35,7 @@
 如果你已经通过 Helm 在 K3s / Kubernetes 中部署 Metapi，并希望在管理后台中：
 
 - 查看当前运行版本
-- 检查 GitHub Releases / Docker Hub 的稳定版
+- 检查当前 GHCR Docker 镜像
 - 通过集群内 helper 手动触发一次升级
 
 请直接阅读：
@@ -55,7 +54,7 @@
 
 模板会自动完成：
 
-- 拉取 `1467078763/metapi:latest` 镜像
+- 拉取 `ghcr.io/2263075977/metapi:latest` 镜像
 - 配置 HTTP 端口（4000）
 - 挂载持久化存储（`/app/data`）
 - 分配域名
@@ -200,26 +199,26 @@ docker run -d --name metapi \
   -e TZ=Asia/Shanghai \
   -v ./data:/app/data \
   --restart unless-stopped \
-  1467078763/metapi:latest
+  ghcr.io/2263075977/metapi:latest
 ```
 
 > **路径说明：**
 > - `./data:/app/data` — 相对路径，数据存到当前目录下的 `data` 文件夹
 > - 也可以使用绝对路径：`/your/custom/path:/app/data`
 
-## 群晖 DS920+ 使用 GHCR 版本镜像
+## 群晖 DS920+ 使用 GHCR 镜像
 
-如果你只想给自己的群晖 DS920+ 部署对应版本，可以使用仓库里的 `Synology Docker Image` GitHub Actions workflow。它只构建 `linux/amd64`，只推送版本标签到 GitHub Container Registry，不会发布 `latest`。
+如果你只想给自己的群晖 DS920+ 部署，可以使用仓库里的 `Synology Docker Image` GitHub Actions workflow。它只构建 `linux/amd64`，并推送固定镜像到 GitHub Container Registry：
 
 触发方式：
 
-- 推送版本 tag，例如 `v1.3.0`
-- 或在 GitHub Actions 页面手动运行 workflow，并填写 `version`，例如 `v1.3.0`
+- 推送到 `main`
+- 或在 GitHub Actions 页面手动运行 workflow
 
-镜像地址格式：
+镜像地址：
 
 ```text
-ghcr.io/2263075977/metapi-synology:v1.3.0
+ghcr.io/2263075977/metapi:latest
 ```
 
 Compose 示例：
@@ -227,7 +226,7 @@ Compose 示例：
 ```yaml
 services:
   metapi:
-    image: ghcr.io/2263075977/metapi-synology:v1.3.0
+    image: ghcr.io/2263075977/metapi:latest
     ports:
       - "4000:4000"
     volumes:
@@ -246,37 +245,6 @@ services:
 docker login ghcr.io
 ```
 
-## 桌面版部署（Windows / macOS / Linux）
-
-桌面版面向个人电脑本地使用，基本安装与配置流程见 [快速上手 → 桌面版启动](./getting-started.md#方式二-桌面版启动-windows-macos-linux)。
-
-以下是部署相关的补充说明。
-
-### 桌面版特性
-
-- 内置本地 Metapi 服务，无需手动准备 Node.js 运行环境
-- 托盘菜单支持重新打开窗口、重启后端、开机自启
-- 支持基于 GitHub Releases 的应用内更新检查
-
-> [!IMPORTANT]
-> 桌面版首次启动时，如果没有显式注入 `AUTH_TOKEN`，管理员登录令牌默认是 `change-me-admin-token`。
-> 这只适合本机初始调试使用，首次登录后应立即修改。
-
-> [!NOTE]
-> 服务器部署不再提供裸 Node.js Release 压缩包，统一推荐 Docker / Docker Compose。
-
-### 桌面版升级
-
-1. 通过应用内更新提示安装新版本，或从 Releases 下载最新安装包覆盖安装
-2. 用户数据目录会保留，升级后自动继续使用原有数据
-3. 如需排查启动问题，优先查看 `app.getPath('userData')/logs` 下的最新日志
-
-Linux 安装包选择建议：
-
-- Fedora / RHEL / CentOS / openSUSE 优先使用 `.rpm`
-- Debian / Ubuntu / Linux Mint 优先使用 `.deb`
-- 其他发行版可使用 `.AppImage`
-
 ## 本地开发运行（源码调试）
 
 开发、调试或提交 PR 的完整流程见 [快速上手 → 本地开发启动](./getting-started.md#方式三-本地开发启动) 和 [CONTRIBUTING.md](../CONTRIBUTING.md)。
@@ -288,7 +256,7 @@ Linux 安装包选择建议：
 
 ## 反向代理
 
-以下反向代理配置面向 Docker / 服务器模式。桌面版内置后端默认监听 `0.0.0.0:4000`，但通常仍作为单机桌面应用使用；如果要给局域网或公网客户端访问，请自行配置防火墙、反向代理和认证边界。若你显式设置了 `METAPI_DESKTOP_SERVER_PORT`，请把示例里的 `4000` 改成对应端口。
+以下反向代理配置面向 Docker / 服务器模式。若你在 Compose 中修改了 `PORT`，请把示例里的 `4000` 改成对应端口。
 
 ### Nginx
 
@@ -363,9 +331,8 @@ docker image prune -f
 | Docker / Docker Compose / Zeabur | 容器内 `DATA_DIR`（常见为 `/app/data`） | 需要映射到宿主机目录或平台持久化卷 |
 | Render + TiDB | TiDB Serverless（外部 MySQL） | 无本地持久化，数据全部存储在 TiDB 云端数据库 |
 | 本地开发 | `DATA_DIR`，默认 `./data` | 位于当前仓库工作目录 |
-| 桌面版 | `app.getPath('userData')/data` | 不在仓库目录里，升级桌面应用时会保留 |
 
-桌面版日志位于 `app.getPath('userData')/logs`；Docker / 本地开发模式的日志则跟随各自进程输出或你配置的日志目录。
+Docker / 本地开发模式的日志跟随各自进程输出或你配置的日志目录。
 
 只要备份了对应的数据目录，升级、重启通常都不会丢失现有配置和 SQLite 数据。
 

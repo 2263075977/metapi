@@ -36,7 +36,7 @@ K3s 更新中心的日常入口位于：
 | 是否启用更新中心 | UI：设置 → 更新中心 | 日常使用优先在 UI 操作 |
 | Deploy Helper URL | UI：设置 → 更新中心 | 例如集群内 Service 地址 |
 | Namespace / Release Name / Chart Ref / Image Repository | UI：设置 → 更新中心 | 都是页面里直接填的部署配置 |
-| GitHub Releases / Docker Hub / 默认部署来源 | UI：设置 → 更新中心 | 属于页面里的版本来源策略 |
+| GHCR / 默认部署来源 | UI：设置 → 更新中心 | 属于页面里的版本来源策略 |
 | 主 Metapi 到 helper 的认证 token | 主 Metapi 环境变量 | `DEPLOY_HELPER_TOKEN` 或 `UPDATE_CENTER_HELPER_TOKEN` |
 | helper 自己监听在哪个地址和端口 | helper 环境变量 / manifest | `DEPLOY_HELPER_HOST` / `DEPLOY_HELPER_PORT` |
 | helper 自己的 Bearer Token | helper 环境变量 / manifest | `DEPLOY_HELPER_TOKEN`，且必须与主服务一致 |
@@ -126,7 +126,7 @@ docker compose up -d
 对已经在 K3s / Kubernetes 里跑 Metapi 的用户，这个“更新中心”主要解决的是：
 
 - 在后台里看当前运行版本
-- 看官方 GitHub Releases / Docker Hub 有没有新的稳定版
+- 查看 GHCR 镜像标签有没有可部署版本
 - 在后台定时检查新版本，并在首次发现时提醒一次
 - 确认 Deploy Helper 是否健康
 - 点一次按钮，触发一轮 Helm 升级
@@ -153,7 +153,7 @@ docker compose up -d
 - 目标 Deployment 带有 `app.kubernetes.io/instance=<releaseName>` 标签
 - 主 Metapi 服务可以访问：
   - GitHub API
-  - Docker Hub API
+  - GHCR API
   - Deploy Helper 的集群内地址
 
 如果上面有任何一项不成立，就先不要配更新中心。
@@ -256,7 +256,7 @@ kubectl apply -f /opt/metapi-k3s/metapi-deploy-helper.yaml
 
 ```bash
 helm template metapi /opt/metapi-k3s/chart \
-  --set image.repository=1467078763/metapi \
+  --set image.repository=ghcr.io/2263075977/metapi \
   --set image.tag=latest \
   --set-string image.digest=sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
   | grep -n 'image:'
@@ -264,11 +264,11 @@ helm template metapi /opt/metapi-k3s/chart \
 
 你期望看到的是：
 
-- `image: "1467078763/metapi@sha256:..."`
+- `image: "ghcr.io/2263075977/metapi@sha256:..."`
 
 如果输出仍然是：
 
-- `image: "1467078763/metapi:latest"`
+- `image: "ghcr.io/2263075977/metapi:latest"`
 
 那说明这份 chart 还是 tag 语义，先不要继续配置更新中心。
 
@@ -299,20 +299,19 @@ helper 端使用：
 | `Namespace` | 目标 release 所在命名空间 | `ai` |
 | `Release Name` | Helm release 名 | `metapi` |
 | `Chart Ref` | helper Pod 能访问到的 chart 引用 | `/opt/metapi-k3s/chart` |
-| `Image Repository` | 升级时写入 chart 的镜像仓库 | `1467078763/metapi` |
-| `默认部署来源` | 默认从 GitHub 还是 Docker Hub 取版本 | `GitHub Releases` |
+| `Image Repository` | 升级时写入 chart 的镜像仓库 | `ghcr.io/2263075977/metapi` |
+| `默认部署来源` | 默认从 GHCR 取镜像标签 | `GHCR Tags` |
 
 另外还有 3 个开关：
 
 - `启用更新中心`
-- `GitHub Releases`
-- `Docker Hub`
+- `GHCR`
 
 补充一点：
 
-- `Docker Hub` 里的**主候选**仍然优先 `latest` / `main` / 稳定 SemVer 标签
+- `GHCR` 里的**主候选**仍然优先 `latest` / `main` / 稳定 SemVer 标签
 - 页面还会自动列出最近推送的 `dev`、分支名、临时标签或 `sha-*` 这类**非稳定标签**，并一起带出 digest
-- 如果你要部署一个更老或更特殊、没出现在自动列表里的标签，仍然可以在 Docker Hub 卡片底部用“手动部署 Docker Hub 标签”填写
+- 如果你要部署一个更老或更特殊、没出现在自动列表里的标签，仍然可以在 GHCR 卡片底部用“手动部署 GHCR 标签”填写
 
 对已经跑起来的 K3s / Helm 用户来说，更新中心的日常配置主要就在这一页：
 
@@ -329,7 +328,7 @@ helper 端使用：
 3. 确认页面状态都正常：
    - 当前运行版本正常显示
    - 版本来源发现了可部署版本
-   - 如果 Docker Hub 显示的是 `latest @ sha256:...`，说明页面已经识别到 alias tag 当前指向的具体镜像 digest
+   - 如果 GHCR 显示的是 `latest @ sha256:...`，说明页面已经识别到 alias tag 当前指向的具体镜像 digest
    - Deploy Helper 显示健康
 4. 如果你要跟随稳定候选，直接点部署按钮；如果你要切到最近的 `dev` / 分支 / 临时标签，可以直接点自动列出的那一项；只有更特殊的 tag 才需要手动填写，必要时连 digest 一起填
 5. 在页面下方看部署日志
