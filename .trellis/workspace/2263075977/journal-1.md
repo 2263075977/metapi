@@ -240,3 +240,36 @@ Extracted ProxyLogs debug settings and trace detail surfaces into page-domain mo
 ### Next Steps
 
 - None - task complete
+
+
+## Session 8: Extract ProxyLogs results surface
+
+**Date**: 2026-06-10
+**Task**: Extract ProxyLogs results surface
+**Branch**: `main`
+
+### Summary
+
+Extracted the ProxyLogs results list/table/detail presentation into a proxy-logs domain surface, kept route orchestration in ProxyLogs.tsx, updated source-reading mobile layout tests, and verified focused tests/typechecks/drift check.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7f9cf94` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

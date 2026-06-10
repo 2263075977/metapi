@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 7
+- **Total Sessions**: 8
 - **Last Active**: 2026-06-10
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~242 | Active |
+| `journal-1.md` | ~275 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 8 | 2026-06-10 | Extract ProxyLogs results surface | `7f9cf94` | `main` |
 | 7 | 2026-06-10 | Extract ProxyLogs debug surfaces | `bf0af60` | `main` |
 | 6 | 2026-06-10 | Clean frontend page import drift | `9a97a61` | `main` |
 | 5 | 2026-06-10 | Proxy helper boundary cleanup | `1c0530e` | `main` |
