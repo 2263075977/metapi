@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetch } from 'undici';
-import type { BuiltEndpointRequest } from './endpointFlow.js';
+import type { BuiltEndpointRequest } from '../orchestration/endpointFlow.js';
 
 vi.mock('undici', async (importOriginal) => {
   const actual = await importOriginal<typeof import('undici')>();
@@ -18,7 +18,7 @@ describe('dispatchRuntimeRequest', () => {
   });
 
   it('routes standard antigravity runtime requests through daily then sandbox base urls and rewrites the payload fingerprint', async () => {
-    const { dispatchRuntimeRequest } = await import('./runtimeExecutor.js');
+    const { dispatchRuntimeRequest } = await import('./runtimeDispatch.js');
     const request: BuiltEndpointRequest = {
       endpoint: 'chat',
       path: '/v1internal:generateContent',
@@ -103,7 +103,7 @@ describe('dispatchRuntimeRequest', () => {
   });
 
   it('routes antigravity gemini-3-pro non-stream requests through the stream endpoint and aggregates SSE back to JSON', async () => {
-    const { dispatchRuntimeRequest } = await import('./runtimeExecutor.js');
+    const { dispatchRuntimeRequest } = await import('./runtimeDispatch.js');
     const request: BuiltEndpointRequest = {
       endpoint: 'chat',
       path: '/v1internal:streamGenerateContent?alt=sse',
@@ -196,7 +196,7 @@ describe('dispatchRuntimeRequest', () => {
   });
 
   it('aggregates an unterminated trailing SSE event for antigravity non-stream stream-endpoint requests', async () => {
-    const { dispatchRuntimeRequest } = await import('./runtimeExecutor.js');
+    const { dispatchRuntimeRequest } = await import('./runtimeDispatch.js');
     const request: BuiltEndpointRequest = {
       endpoint: 'chat',
       path: '/v1internal:streamGenerateContent?alt=sse',
@@ -266,7 +266,7 @@ describe('dispatchRuntimeRequest', () => {
   });
 
   it('keeps gemini-cli countTokens payload lean while forcing a model-aware user agent', async () => {
-    const { dispatchRuntimeRequest } = await import('./runtimeExecutor.js');
+    const { dispatchRuntimeRequest } = await import('./runtimeDispatch.js');
     const request: BuiltEndpointRequest = {
       endpoint: 'chat',
       path: '/v1internal:countTokens',
@@ -334,7 +334,7 @@ describe('dispatchRuntimeRequest', () => {
   });
 
   it('retries antigravity runtime requests on transport errors before falling back to the next base url', async () => {
-    const { dispatchRuntimeRequest } = await import('./runtimeExecutor.js');
+    const { dispatchRuntimeRequest } = await import('./runtimeDispatch.js');
     const request: BuiltEndpointRequest = {
       endpoint: 'chat',
       path: '/v1internal:generateContent',

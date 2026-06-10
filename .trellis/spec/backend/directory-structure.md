@@ -73,6 +73,12 @@ src/
   `proxy-core/surfaces/chatSurface.ts`.
 - Good: downstream routing-policy helpers shared by proxy routes and surfaces
   live in `proxy-core/downstreamPolicy.ts`.
+- Good: multipart proxy request helpers shared by file surfaces and route
+  adapters live in `proxy-core/multipart.ts`.
+- Good: runtime executor dispatch lives in
+  `proxy-core/runtime/runtimeDispatch.ts`, with `services/runtimeDispatch.ts`
+  only acting as a stable service-layer re-export when existing service tests
+  need that mock seam.
 - Base: route-local helpers that are used by exactly one route file may stay
   next to that route.
 - Bad: `proxy-core/surfaces/chatSurface.ts` importing
@@ -99,6 +105,12 @@ Correct:
 ```typescript
 // route adapters and proxy-core both import the neutral core helper.
 import { getDownstreamRoutingPolicy } from '../downstreamPolicy.js';
+```
+
+Correct:
+```typescript
+// services can keep a stable re-export seam, but it must point to proxy-core.
+export { dispatchRuntimeRequest } from '../proxy-core/runtime/runtimeDispatch.js';
 ```
 
 ---

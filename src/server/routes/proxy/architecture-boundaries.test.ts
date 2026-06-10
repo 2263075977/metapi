@@ -43,14 +43,9 @@ function findRouteProxyImports(relativeDirs: string[]): string[] {
 
 describe('proxy route architecture boundaries', () => {
   it('keeps proxy-core and services from depending on route proxy helpers', () => {
-    const knownFollowUpBoundaryDebts = new Set([
-      '../../proxy-core/surfaces/filesSurface.ts imports ../../routes/proxy/multipart.js',
-      '../../services/runtimeDispatch.ts imports ../routes/proxy/runtimeExecutor.js',
-    ]);
     const routeProxyImports = findRouteProxyImports(['../../proxy-core', '../../services']);
-    const unexpectedImports = routeProxyImports.filter((item) => !knownFollowUpBoundaryDebts.has(item));
 
-    expect(unexpectedImports).toEqual([]);
+    expect(routeProxyImports).toEqual([]);
   });
 
   it('keeps shared protocol helpers out of chat route', () => {
