@@ -1,11 +1,58 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 function readSource(relativePath: string): string {
   return readFileSync(new URL(relativePath, import.meta.url), 'utf8');
 }
 
+function collectSourceFiles(relativeDir: string): Array<{ path: string; source: string }> {
+  const normalizedDir = relativeDir.replace(/\/$/, '');
+  const entries = readdirSync(new URL(`${normalizedDir}/`, import.meta.url), { withFileTypes: true });
+  const files: Array<{ path: string; source: string }> = [];
+
+  for (const entry of entries) {
+    const relativePath = `${normalizedDir}/${entry.name}`;
+    if (entry.isDirectory()) {
+      files.push(...collectSourceFiles(relativePath));
+      continue;
+    }
+    if (!entry.isFile() || !entry.name.endsWith('.ts') || entry.name.endsWith('.test.ts')) {
+      continue;
+    }
+    files.push({
+      path: relativePath,
+      source: readSource(relativePath),
+    });
+  }
+
+  return files;
+}
+
+function findRouteProxyImports(relativeDirs: string[]): string[] {
+  const importPattern = /\bfrom\s+['"]([^'"]*routes\/proxy\/[^'"]+)['"]/g;
+  return relativeDirs.flatMap((relativeDir) => (
+    collectSourceFiles(relativeDir).flatMap((file) => {
+      const violations: string[] = [];
+      for (const match of file.source.matchAll(importPattern)) {
+        violations.push(`${file.path} imports ${match[1]}`);
+      }
+      return violations;
+    })
+  ));
+}
+
 describe('proxy route architecture boundaries', () => {
+  it('keeps proxy-core and services from depending on route proxy helpers', () => {
+    const knownFollowUpBoundaryDebts = new Set([
+      '../../proxy-core/surfaces/filesSurface.ts imports ../../routes/proxy/multipart.js',
+      '../../services/runtimeDispatch.ts imports ../routes/proxy/runtimeExecutor.js',
+    ]);
+    const routeProxyImports = findRouteProxyImports(['../../proxy-core', '../../services']);
+    const unexpectedImports = routeProxyImports.filter((item) => !knownFollowUpBoundaryDebts.has(item));
+
+    expect(unexpectedImports).toEqual([]);
+  });
+
   it('keeps shared protocol helpers out of chat route', () => {
     const source = readSource('./chat.ts');
     const surfaceSource = readSource('../../proxy-core/surfaces/chatSurface.ts');
