@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 4
+- **Total Sessions**: 5
 - **Last Active**: 2026-06-10
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~143 | Active |
+| `journal-1.md` | ~176 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 5 | 2026-06-10 | Proxy helper boundary cleanup | `1c0530e` | `main` |
 | 4 | 2026-06-10 | Proxy boundary cleanup | `271a056` | `main` |
 | 3 | 2026-06-10 | Remove site announcements feature | `0501537`, `57f560a` | `main` |
 | 2 | 2026-06-10 | GHCR Docker-only deployment | `50da044`, `fd38965`, `8f34a01` | `main` |

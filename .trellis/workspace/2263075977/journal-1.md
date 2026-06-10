@@ -141,3 +141,36 @@ Moved downstream proxy policy helpers into proxy-core, added a boundary architec
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: Proxy helper boundary cleanup
+
+**Date**: 2026-06-10
+**Task**: Proxy helper boundary cleanup
+**Branch**: `main`
+
+### Summary
+
+Moved remaining backend proxy helpers into proxy-core, removed route-layer dependency exceptions from architecture tests, and validated with server typecheck, targeted Vitest tests, repo drift check, and diff check.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1c0530e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
