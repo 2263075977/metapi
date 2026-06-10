@@ -17,13 +17,12 @@ import {
   type ProxyLogStatusFilter,
 } from "../api.js";
 import { useToast } from "../components/Toast.js";
-import { MobileCard, MobileField } from "../components/MobileCard.js";
 import ResponsiveFilterPanel from "../components/ResponsiveFilterPanel.js";
 import { useIsMobile } from "../components/useIsMobile.js";
-import { formatDateTimeLocal } from "./helpers/checkinLogTime.js";
 import ModernSelect from "../components/ModernSelect.js";
 import { tr } from "../i18n.js";
 import DebugSettingsSurface from "./proxy-logs/DebugSettingsSurface.js";
+import DebugTraceListSurface from "./proxy-logs/DebugTraceListSurface.js";
 import DebugTraceDetailSurface from "./proxy-logs/DebugTraceDetailSurface.js";
 import ProxyLogResultsSurface from "./proxy-logs/ProxyLogResultsSurface.js";
 import { parseStoredDebugPreview } from "./proxy-logs/debugStoredValue.js";
@@ -64,11 +63,6 @@ const DEFAULT_PROXY_DEBUG_SETTINGS: ProxyDebugSettingsState = {
   proxyDebugMaxBodyBytes: 262144,
 };
 const DEBUG_REFRESH_INTERVAL_MS = 2000;
-const compactSummaryMetricStyle: React.CSSProperties = {
-  display: "grid",
-  gap: 4,
-  minWidth: 112,
-};
 async function copyTextToClipboard(text: string) {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(text);
@@ -215,54 +209,6 @@ function buildProxyDebugSettingsPayload(
       Math.trunc(Number(settings.proxyDebugMaxBodyBytes || 262144)),
     ),
   };
-}
-
-function formatProxyDebugCaptureSummary(settings: ProxyDebugSettingsState) {
-  const parts = ["路由决策"];
-  if (settings.proxyDebugCaptureHeaders) parts.push("请求/响应头");
-  if (settings.proxyDebugCaptureBodies) parts.push("请求/响应体");
-  if (settings.proxyDebugCaptureStreamChunks) parts.push("流式分片");
-  return parts.join("、");
-}
-
-function formatProxyDebugTargetSummary(settings: ProxyDebugSettingsState) {
-  const parts = [
-    settings.proxyDebugTargetSessionId
-      ? `Session ${settings.proxyDebugTargetSessionId}`
-      : null,
-    settings.proxyDebugTargetClientKind
-      ? `客户端 ${settings.proxyDebugTargetClientKind}`
-      : null,
-    settings.proxyDebugTargetModel
-      ? `模型 ${settings.proxyDebugTargetModel}`
-      : null,
-  ].filter(Boolean);
-  return parts.length > 0 ? parts.join("，") : "不过滤，记录所有命中的新请求";
-}
-
-function CompactSummaryMetric({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div style={compactSummaryMetricStyle}>
-      <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-        {label}
-      </span>
-      <strong
-        style={{
-          fontSize: 14,
-          color: "var(--color-text-primary)",
-          fontWeight: 700,
-        }}
-      >
-        {value}
-      </strong>
-    </div>
-  );
 }
 
 function readStoredDebugTracePanelExpanded(): boolean {
@@ -940,18 +886,6 @@ export default function ProxyLogs() {
     [toast],
   );
 
-  function renderTraceStatusBadge(trace: ProxyDebugTraceListItem) {
-    const failed = trace.finalStatus === "failed";
-    return (
-      <span
-        className={`badge ${failed ? "badge-error" : "badge-success"}`}
-        style={{ fontSize: 11 }}
-      >
-        {failed ? "失败" : "成功"}
-      </span>
-    );
-  }
-
   const filterControls = (
     <>
       <div className="pill-tabs">
@@ -1181,400 +1115,33 @@ export default function ProxyLogs() {
         }
       />
 
-      <div
-        className="card"
-        style={{
-          marginBottom: 12,
-          padding: 14,
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
+      <DebugTraceListSurface
+        isMobile={isMobile}
+        settings={debugSettings}
+        traces={debugTraces}
+        visibleTraces={visibleDebugTraces}
+        latestTrace={latestDebugTrace}
+        loading={debugPanelLoading}
+        saving={debugPanelSaving}
+        panelExpanded={debugTracePanelExpanded}
+        safePage={safeDebugTracePage}
+        totalPages={debugTraceTotalPages}
+        displayedStart={debugTraceDisplayedStart}
+        displayedEnd={debugTraceDisplayedEnd}
+        onTogglePanel={() =>
+          setDebugTracePanelExpanded((current) => !current)
+        }
+        onQuickToggleDebugTrace={handleQuickToggleDebugTrace}
+        onOpenSettings={() => {
+          setDebugDraftSettings(debugSettings);
+          setShowDebugSettingsModal(true);
         }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--color-text-primary)",
-              }}
-            >
-              代理调试追踪
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: "var(--color-text-muted)",
-                marginTop: 4,
-              }}
-            >
-              未开启时不记录新追踪；追踪详情通过弹窗按需查看。
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              style={{ border: "1px solid var(--color-border)" }}
-              aria-expanded={debugTracePanelExpanded}
-              data-debug-trace-panel-toggle
-              onClick={() => setDebugTracePanelExpanded((current) => !current)}
-            >
-              <svg
-                width="14"
-                height="14"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                style={{
-                  transform: debugTracePanelExpanded
-                    ? "rotate(180deg)"
-                    : "rotate(0deg)",
-                  transition: "transform 0.2s ease",
-                }}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-              {debugTracePanelExpanded ? "收起追踪面板" : "展开追踪面板"}
-            </button>
-            <button
-              type="button"
-              className={
-                debugSettings.proxyDebugTraceEnabled
-                  ? "btn btn-ghost btn-ghost-active"
-                  : "btn btn-ghost"
-              }
-              style={{ border: "1px solid var(--color-border)" }}
-              onClick={() => void handleQuickToggleDebugTrace()}
-              disabled={debugPanelSaving}
-            >
-              {debugSettings.proxyDebugTraceEnabled ? "关闭调试" : "开启调试"}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              style={{ border: "1px solid var(--color-border)" }}
-              onClick={() => {
-                setDebugDraftSettings(debugSettings);
-                setShowDebugSettingsModal(true);
-              }}
-            >
-              调试设置
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              style={{ border: "1px solid var(--color-border)" }}
-              onClick={() => void loadDebugState()}
-              disabled={debugPanelLoading}
-            >
-              {debugPanelLoading ? "刷新中..." : "刷新追踪"}
-            </button>
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "12px 18px",
-            alignItems: "center",
-          }}
-        >
-          <CompactSummaryMetric
-            label="状态"
-            value={debugSettings.proxyDebugTraceEnabled ? "已开启" : "未开启"}
-          />
-          <CompactSummaryMetric
-            label="最近追踪"
-            value={`${debugTraces.length} 条`}
-          />
-          <CompactSummaryMetric
-            label="最新时间"
-            value={
-              latestDebugTrace
-                ? formatDateTimeLocal(latestDebugTrace.createdAt)
-                : "暂无"
-            }
-          />
-        </div>
-
-        <div style={{ display: "grid", gap: 4 }}>
-          <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-            记录内容：{formatProxyDebugCaptureSummary(debugSettings)}
-          </div>
-          <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-            过滤范围：{formatProxyDebugTargetSummary(debugSettings)}
-          </div>
-        </div>
-      </div>
-
-      <div
-        className={`anim-collapse ${debugTracePanelExpanded ? "is-open" : ""}`.trim()}
-        data-debug-trace-panel-body
-        style={{ marginBottom: debugTracePanelExpanded ? 12 : 0 }}
-      >
-        <div className="anim-collapse-inner">
-          <div className="card" style={{ padding: 12, overflowX: "auto" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-                flexWrap: "wrap",
-                marginBottom: 12,
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: "var(--color-text-primary)",
-                  }}
-                >
-                  最近调试追踪
-                </div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "var(--color-text-muted)",
-                    marginTop: 4,
-                  }}
-                >
-                  最多抓最近 20 条，列表分页每页 5
-                  条；打开详情后各段内容可按需展开和收起。
-                </div>
-              </div>
-              <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-                {debugSettings.proxyDebugTraceEnabled
-                  ? "开启中，结果会自动刷新"
-                  : "尚未开启"}
-              </div>
-            </div>
-
-            {debugPanelLoading && debugTraces.length === 0 ? (
-              <div
-                style={{
-                  color: "var(--color-text-muted)",
-                  fontSize: 13,
-                  paddingBottom: 12,
-                }}
-              >
-                加载调试追踪中...
-              </div>
-            ) : debugTraces.length === 0 ? (
-              <div
-                style={{
-                  padding: 14,
-                  borderRadius: "var(--radius-sm)",
-                  border: "1px solid var(--color-border-light)",
-                  background: "var(--color-bg)",
-                  color: "var(--color-text-muted)",
-                  fontSize: 12,
-                  lineHeight: 1.6,
-                }}
-              >
-                {debugSettings.proxyDebugTraceEnabled
-                  ? "暂时还没有新追踪。这里只显示开启后产生的新请求，等下一次代理请求进入就会出现在这里。"
-                  : "调试追踪尚未开启。点击上方“开启调试”或“调试设置”后，新的代理请求会出现在这里。"}
-              </div>
-            ) : isMobile ? (
-              <div className="mobile-card-list">
-                {visibleDebugTraces.map((trace) => (
-                  <MobileCard
-                    key={trace.id}
-                    title={trace.sessionId || `trace-${trace.id}`}
-                    subtitle={formatDateTimeLocal(trace.createdAt)}
-                    compact
-                    headerActions={renderTraceStatusBadge(trace)}
-                    footerActions={
-                      <button
-                        type="button"
-                        className="btn btn-link"
-                        onClick={() => openDebugTraceDetailModal(trace.id)}
-                      >
-                        查看详情
-                      </button>
-                    }
-                  >
-                    <MobileField
-                      label="模型"
-                      value={trace.requestedModel || "-"}
-                    />
-                    <MobileField
-                      label="下游路径"
-                      value={trace.downstreamPath || "-"}
-                    />
-                    <MobileField
-                      label="上游路径"
-                      value={trace.finalUpstreamPath || "-"}
-                    />
-                    <MobileField
-                      label="客户端"
-                      value={trace.clientKind || "-"}
-                    />
-                  </MobileCard>
-                ))}
-              </div>
-            ) : (
-              <table className="data-table" style={{ width: "100%" }}>
-                <thead>
-                  <tr>
-                    <th>时间</th>
-                    <th>Session</th>
-                    <th>模型</th>
-                    <th>下游路径</th>
-                    <th>上游路径</th>
-                    <th>客户端</th>
-                    <th>{tr("状态")}</th>
-                    <th style={{ textAlign: "right" }}>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleDebugTraces.map((trace) => (
-                    <tr key={trace.id}>
-                      <td
-                        style={{
-                          fontSize: 12,
-                          whiteSpace: "nowrap",
-                          fontVariantNumeric: "tabular-nums",
-                          color: "var(--color-text-secondary)",
-                        }}
-                      >
-                        {formatDateTimeLocal(trace.createdAt)}
-                      </td>
-                      <td style={{ fontSize: 12, fontWeight: 600 }}>
-                        {trace.sessionId || `trace-${trace.id}`}
-                      </td>
-                      <td style={{ fontSize: 12 }}>
-                        {trace.requestedModel || "-"}
-                      </td>
-                      <td
-                        style={{
-                          fontSize: 12,
-                          color: "var(--color-text-secondary)",
-                        }}
-                      >
-                        {trace.downstreamPath || "-"}
-                      </td>
-                      <td
-                        style={{
-                          fontSize: 12,
-                          color: "var(--color-text-secondary)",
-                        }}
-                      >
-                        {trace.finalUpstreamPath || "-"}
-                      </td>
-                      <td
-                        style={{
-                          fontSize: 12,
-                          color: "var(--color-text-secondary)",
-                        }}
-                      >
-                        {trace.clientKind || "-"}
-                      </td>
-                      <td>{renderTraceStatusBadge(trace)}</td>
-                      <td style={{ textAlign: "right" }}>
-                        <button
-                          type="button"
-                          className="btn btn-link"
-                          onClick={() => openDebugTraceDetailModal(trace.id)}
-                        >
-                          查看详情
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {debugTraces.length > 0 ? (
-              <div className="pagination" style={{ marginTop: 12 }}>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "var(--color-text-muted)",
-                    marginRight: "auto",
-                  }}
-                >
-                  显示第 {debugTraceDisplayedStart} - {debugTraceDisplayedEnd}{" "}
-                  条，共 {debugTraces.length} 条
-                </div>
-                <button
-                  className="pagination-btn"
-                  aria-label="调试追踪上一页"
-                  disabled={safeDebugTracePage <= 1}
-                  onClick={() => setDebugTracePage((current) => current - 1)}
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 19l-7-7 7-7"
-                    />
-                  </svg>
-                </button>
-                {Array.from(
-                  { length: debugTraceTotalPages },
-                  (_, index) => index + 1,
-                ).map((num) => (
-                  <button
-                    key={`debug-trace-page-${num}`}
-                    className={`pagination-btn ${safeDebugTracePage === num ? "active" : ""}`}
-                    onClick={() => setDebugTracePage(num)}
-                  >
-                    {num}
-                  </button>
-                ))}
-                <button
-                  className="pagination-btn"
-                  aria-label="调试追踪下一页"
-                  disabled={safeDebugTracePage >= debugTraceTotalPages}
-                  onClick={() => setDebugTracePage((current) => current + 1)}
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </div>
+        onRefresh={loadDebugState}
+        onOpenTraceDetail={openDebugTraceDetailModal}
+        onPreviousPage={() => setDebugTracePage((current) => current - 1)}
+        onSelectPage={setDebugTracePage}
+        onNextPage={() => setDebugTracePage((current) => current + 1)}
+      />
 
       <DebugSettingsSurface
         isMobile={isMobile}
