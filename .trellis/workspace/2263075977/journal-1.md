@@ -39,3 +39,38 @@ Removed the standalone external availability monitor surface, including frontend
 ### Next Steps
 
 - None - task complete
+
+
+## Session 2: GHCR Docker-only deployment
+
+**Date**: 2026-06-10
+**Task**: GHCR Docker-only deployment
+**Branch**: `main`
+
+### Summary
+
+Switched personal deployment to GHCR latest Docker image, removed desktop/GitHub Release and Docker Hub publishing paths, updated update center defaults and deployment docs.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `50da044` | (see git log) |
+| `fd38965` | (see git log) |
+| `8f34a01` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
