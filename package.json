@@ -127,6 +127,11 @@
     "wait-on": "^9.0.10"
   },
   "overrides": {
+    "fast-uri": "3.1.2",
+    "minimatch": {
+      ".": "$minimatch",
+      "brace-expansion": "5.0.6"
+    },
     "minimist": "^1.2.8"
   },
   "author": {
