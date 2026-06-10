@@ -1,4 +1,9 @@
-import type { ProxyDebugTraceDetail } from "../../api.js";
+import type {
+  ProxyDebugTraceDetail,
+  ProxyLogBillingDetails,
+  ProxyLogDetail,
+  ProxyLogListItem,
+} from "../../api.js";
 
 export type ProxyDebugSettingsState = {
   proxyDebugTraceEnabled: boolean;
@@ -19,3 +24,17 @@ export type ProxyDebugTraceDetailState = {
 };
 
 export type ProxyDebugTraceAttempt = ProxyDebugTraceDetail["attempts"][number];
+
+export type ProxyLogRenderItem = ProxyLogListItem & {
+  billingDetails?: ProxyLogBillingDetails;
+  username?: string | null;
+  siteName?: string | null;
+  siteUrl?: string | null;
+  errorMessage?: string | null;
+};
+
+export type ProxyLogDetailState = {
+  loading: boolean;
+  data?: ProxyLogDetail;
+  error?: string;
+};
