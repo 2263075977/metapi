@@ -273,3 +273,36 @@ Extracted the ProxyLogs results list/table/detail presentation into a proxy-logs
 ### Next Steps
 
 - None - task complete
+
+
+## Session 9: Extract ProxyLogs debug trace list surface
+
+**Date**: 2026-06-10
+**Task**: Extract ProxyLogs debug trace list surface
+**Branch**: `main`
+
+### Summary
+
+Extracted the Proxy Logs debug trace panel/list presentation into a controlled page-local domain surface while keeping trace state, polling, persistence, and detail modal orchestration in ProxyLogs.tsx. Verified focused ProxyLogs tests, web type checks, repo drift check, and diff whitespace check.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `606d000` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
