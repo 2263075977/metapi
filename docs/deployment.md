@@ -207,6 +207,45 @@ docker run -d --name metapi \
 > - `./data:/app/data` — 相对路径，数据存到当前目录下的 `data` 文件夹
 > - 也可以使用绝对路径：`/your/custom/path:/app/data`
 
+## 群晖 DS920+ 使用 GHCR 版本镜像
+
+如果你只想给自己的群晖 DS920+ 部署对应版本，可以使用仓库里的 `Synology Docker Image` GitHub Actions workflow。它只构建 `linux/amd64`，只推送版本标签到 GitHub Container Registry，不会发布 `latest`。
+
+触发方式：
+
+- 推送版本 tag，例如 `v1.3.0`
+- 或在 GitHub Actions 页面手动运行 workflow，并填写 `version`，例如 `v1.3.0`
+
+镜像地址格式：
+
+```text
+ghcr.io/2263075977/metapi-synology:v1.3.0
+```
+
+Compose 示例：
+
+```yaml
+services:
+  metapi:
+    image: ghcr.io/2263075977/metapi-synology:v1.3.0
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      AUTH_TOKEN: ${AUTH_TOKEN:?AUTH_TOKEN is required}
+      PROXY_TOKEN: ${PROXY_TOKEN:?PROXY_TOKEN is required}
+      DATA_DIR: /app/data
+      TZ: Asia/Shanghai
+    restart: unless-stopped
+```
+
+如果 GHCR package 是私有的，需要先在群晖主机上使用有 package read 权限的 GitHub PAT 登录：
+
+```bash
+docker login ghcr.io
+```
+
 ## 桌面版部署（Windows / macOS / Linux）
 
 桌面版面向个人电脑本地使用，基本安装与配置流程见 [快速上手 → 桌面版启动](./getting-started.md#方式二-桌面版启动-windows-macos-linux)。

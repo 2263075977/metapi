@@ -336,6 +336,7 @@ docker run -d --name metapi \
 > [!NOTE]
 > Docker 镜像支持 `amd64`、`arm64` 和 `armv7l`（`linux/arm/v7`）服务端部署。
 > 当前 `armv7l` 支持范围仅限服务端 / Docker 运行，不包含桌面安装包。
+> 群晖 DS920+ 可使用 `linux/amd64` 镜像；个人仓库也可以通过 GitHub Actions 发布版本镜像到独立 GHCR package，例如 `ghcr.io/2263075977/metapi-synology:v1.3.0`。
 
 <!-- markdownlint-disable-next-line MD028 -->
 > [!IMPORTANT]

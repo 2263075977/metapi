@@ -352,6 +352,7 @@ After starting, visit `http://localhost:4000` and log in with your `AUTH_TOKEN`!
 > [!NOTE]
 > Docker images support `amd64`, `arm64`, and `armv7l` (`linux/arm/v7`) server deployments.
 > Current `armv7l` support is limited to server / Docker usage and does not include Electron desktop packaging support.
+> Synology DS920+ can use the `linux/amd64` image. A personal fork can publish versioned images to a dedicated GHCR package with GitHub Actions, for example `ghcr.io/2263075977/metapi-synology:v1.3.0`.
 
 <!-- markdownlint-disable-next-line MD028 -->
 > [!IMPORTANT]
