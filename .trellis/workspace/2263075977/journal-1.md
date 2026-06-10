@@ -174,3 +174,36 @@ Moved remaining backend proxy helpers into proxy-core, removed route-layer depen
 ### Next Steps
 
 - None - task complete
+
+
+## Session 6: Clean frontend page import drift
+
+**Date**: 2026-06-10
+**Task**: Clean frontend page import drift
+**Branch**: `main`
+
+### Summary
+
+Moved the reusable TokensPanel out of the top-level Tokens page into a domain module, updated Accounts/tests imports, cleared repo drift page-import debt, and documented the frontend page boundary convention.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9a97a61` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
