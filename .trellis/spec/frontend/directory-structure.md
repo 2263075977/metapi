@@ -58,6 +58,27 @@ surface.
 - `src/web/pages/token-routes/RouteCard.tsx`
 - `src/web/pages/tokens/TokensPanel.tsx`
 
+Single large route pages may also extract page-local modal, drawer, or detail
+surfaces into `src/web/pages/<domain>/` before a second page consumes them.
+Keep request orchestration, route state, polling, cache refs, and persistence
+keys in the route page unless a focused hook boundary is part of the task.
+Move the repeated mobile/desktop shell JSX and pure presentation helpers into
+the domain module.
+
+```typescript
+// Good: the route page owns state and loaders.
+<DebugTraceDetailSurface
+  open={showDebugTraceDetailModal}
+  detail={selectedDebugTraceDetail}
+  onClose={closeDebugTraceDetailModal}
+/>
+
+// Good: the domain surface owns modal/drawer presentation.
+export default function DebugTraceDetailSurface(props: Props) {
+  return props.isMobile ? <MobileDrawer ... /> : <CenteredModal ... />;
+}
+```
+
 **Validation**:
 
 - Run `npm run repo:drift-check` after moving page surfaces.
