@@ -14,7 +14,7 @@ describe('update helper service', () => {
         namespace: 'ai',
         releaseName: 'metapi',
         chartRef: 'oci://ghcr.io/cita-777/charts/metapi',
-        imageRepository: '1467078763/metapi',
+        imageRepository: 'ghcr.io/2263075977/metapi',
         targetSource: 'github-release',
         targetTag: '1.3.0',
         targetDigest: null,
@@ -54,7 +54,7 @@ describe('update helper service', () => {
           'ai',
           '--reuse-values',
           '--set',
-          'image.repository=1467078763/metapi',
+          'image.repository=ghcr.io/2263075977/metapi',
           '--set',
           'image.tag=1.3.0',
           '--set-string',
@@ -97,7 +97,7 @@ describe('update helper service', () => {
         namespace: 'ai',
         releaseName: 'metapi',
         chartRef: 'oci://ghcr.io/cita-777/charts/metapi',
-        imageRepository: '1467078763/metapi',
+        imageRepository: 'ghcr.io/2263075977/metapi',
         targetSource: 'docker-hub-tag',
         targetTag: 'latest',
         targetDigest: 'sha256:efb2ee6553866bd3268dcc54c02fa5f9789728c51ed4af63328aaba6da67df35',
@@ -132,7 +132,7 @@ describe('update helper service', () => {
         'ai',
         '--reuse-values',
         '--set',
-        'image.repository=1467078763/metapi',
+        'image.repository=ghcr.io/2263075977/metapi',
         '--set',
         'image.tag=latest',
         '--set-string',
@@ -154,7 +154,7 @@ describe('update helper service', () => {
         namespace: 'ai',
         releaseName: 'metapi',
         chartRef: 'oci://ghcr.io/cita-777/charts/metapi',
-        imageRepository: '1467078763/metapi',
+        imageRepository: 'ghcr.io/2263075977/metapi',
         targetSource: 'docker-hub-tag',
         targetTag: '1.3.1',
         targetDigest: null,
@@ -263,7 +263,7 @@ describe('update helper service', () => {
               return {
                 stdout: JSON.stringify({
                   image: {
-                    repository: '1467078763/metapi',
+                    repository: 'ghcr.io/2263075977/metapi',
                     tag: 'latest',
                     digest: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
                   },
@@ -274,7 +274,7 @@ describe('update helper service', () => {
               return {
                 stdout: JSON.stringify({
                   image: {
-                    repository: '1467078763/metapi',
+                    repository: 'ghcr.io/2263075977/metapi',
                     tag: 'main',
                     digest: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
                   },
@@ -284,7 +284,7 @@ describe('update helper service', () => {
             return {
               stdout: JSON.stringify({
                 image: {
-                  repository: '1467078763/metapi',
+                  repository: 'ghcr.io/2263075977/metapi',
                   tag: 'latest',
                 },
               }),
@@ -306,7 +306,7 @@ describe('update helper service', () => {
                     status: {
                       containerStatuses: [
                         {
-                          imageID: 'docker-pullable://1467078763/metapi@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+                          imageID: 'docker-pullable://ghcr.io/2263075977/metapi@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
                         },
                       ],
                     },
@@ -325,7 +325,7 @@ describe('update helper service', () => {
       releaseName: 'metapi',
       namespace: 'ai',
       revision: '17',
-      imageRepository: '1467078763/metapi',
+      imageRepository: 'ghcr.io/2263075977/metapi',
       imageTag: 'latest',
       imageDigest: 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
       healthy: true,
@@ -335,7 +335,7 @@ describe('update helper service', () => {
           updatedAt: '2026-03-29T12:00:00Z',
           status: 'deployed',
           description: 'Upgrade complete',
-          imageRepository: '1467078763/metapi',
+          imageRepository: 'ghcr.io/2263075977/metapi',
           imageTag: 'main',
           imageDigest: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
         },
@@ -344,7 +344,7 @@ describe('update helper service', () => {
           updatedAt: '2026-03-28T12:00:00Z',
           status: 'superseded',
           description: 'Rollback to stable digest',
-          imageRepository: '1467078763/metapi',
+          imageRepository: 'ghcr.io/2263075977/metapi',
           imageTag: 'latest',
           imageDigest: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
         },
@@ -375,7 +375,7 @@ describe('update helper service', () => {
             return {
               stdout: JSON.stringify({
                 image: {
-                  repository: '1467078763/metapi',
+                  repository: 'ghcr.io/2263075977/metapi',
                   tag: 'latest',
                   digest: 'sha256:1523dfcbaca146b8a64a3a022878165027900ee4cb396a45e474aa7a969dacb1',
                 },
@@ -400,7 +400,7 @@ describe('update helper service', () => {
                       containerStatuses: [
                         {
                           ready: true,
-                          imageID: 'docker-pullable://1467078763/metapi@sha256:1523dfcbaca146b8a64a3a022878165027900ee4cb396a45e474aa7a969dacb1',
+                          imageID: 'docker-pullable://ghcr.io/2263075977/metapi@sha256:1523dfcbaca146b8a64a3a022878165027900ee4cb396a45e474aa7a969dacb1',
                         },
                       ],
                     },
@@ -419,7 +419,7 @@ describe('update helper service', () => {
       releaseName: 'metapi',
       namespace: 'ai',
       revision: '22',
-      imageRepository: '1467078763/metapi',
+      imageRepository: 'ghcr.io/2263075977/metapi',
       imageTag: 'latest',
       imageDigest: 'sha256:1523dfcbaca146b8a64a3a022878165027900ee4cb396a45e474aa7a969dacb1',
       healthy: true,

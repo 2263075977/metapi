@@ -39,6 +39,11 @@ export type DockerHubTagRecord = {
   digest?: string | null;
 };
 
+export type GhcrTokenRecord = {
+  token?: string | null;
+  access_token?: string | null;
+};
+
 export type DockerHubTagCandidates = {
   primary: UpdateCenterVersionCandidate | null;
   recentNonStable: UpdateCenterVersionCandidate[];
@@ -46,7 +51,8 @@ export type DockerHubTagCandidates = {
 
 const STABLE_SEMVER_PATTERN = /^v?(\d+)\.(\d+)\.(\d+)(?:\+[\w.-]+)?$/i;
 const GITHUB_RELEASES_URL = 'https://api.github.com/repos/cita-777/metapi/releases';
-const DOCKER_HUB_TAGS_URL = 'https://hub.docker.com/v2/repositories/1467078763/metapi/tags?page_size=100';
+const GHCR_TOKEN_URL = 'https://ghcr.io/token?service=ghcr.io&scope=repository:2263075977/metapi:pull';
+const GHCR_TAGS_URL = 'https://ghcr.io/v2/2263075977/metapi/tags/list';
 const UPDATE_CENTER_VERSION_FETCH_TIMEOUT_MS = 5_000;
 const PREFERRED_DOCKER_HUB_TAG_ALIASES = ['latest', 'main'] as const;
 const MAX_RECENT_NON_STABLE_DOCKER_HUB_TAGS = 5;
@@ -295,13 +301,30 @@ export async function fetchLatestDockerHubTag(): Promise<UpdateCenterVersionCand
 }
 
 export async function fetchDockerHubTagCandidates(): Promise<DockerHubTagCandidates> {
-  const payload = await fetchJsonWithTimeout(DOCKER_HUB_TAGS_URL, {
+  const tokenPayload = await fetchJsonWithTimeout(GHCR_TOKEN_URL, {
     headers: {
       accept: 'application/json',
       'user-agent': 'metapi-update-center/1.0',
     },
-  }, 'Docker Hub tag lookup') as { results?: DockerHubTagRecord[] };
-  return selectDockerHubTagCandidates(Array.isArray(payload?.results) ? payload.results : []);
+  }, 'GHCR token lookup') as GhcrTokenRecord;
+  const token = String(tokenPayload.token || tokenPayload.access_token || '').trim();
+  if (!token) {
+    throw new Error('GHCR token lookup returned an empty token');
+  }
+
+  const payload = await fetchJsonWithTimeout(GHCR_TAGS_URL, {
+    headers: {
+      accept: 'application/json',
+      authorization: `Bearer ${token}`,
+      'user-agent': 'metapi-update-center/1.0',
+    },
+  }, 'GHCR tag lookup') as { results?: DockerHubTagRecord[]; tags?: string[] };
+  const tags = Array.isArray(payload?.results)
+    ? payload.results
+    : Array.isArray(payload?.tags)
+      ? payload.tags
+      : [];
+  return selectDockerHubTagCandidates(tags);
 }
 
 export function getCurrentRuntimeVersion(): string {

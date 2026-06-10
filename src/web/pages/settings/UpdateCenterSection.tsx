@@ -89,10 +89,10 @@ const DEFAULT_CONFIG: NonNullable<UpdateCenterStatus['config']> = {
   namespace: 'default',
   releaseName: '',
   chartRef: '',
-  imageRepository: '1467078763/metapi',
-  githubReleasesEnabled: true,
+  imageRepository: 'ghcr.io/2263075977/metapi',
+  githubReleasesEnabled: false,
   dockerHubTagsEnabled: true,
-  defaultDeploySource: 'github-release',
+  defaultDeploySource: 'docker-hub-tag',
 };
 
 const DEPLOY_SOURCE_OPTIONS = [
@@ -103,8 +103,8 @@ const DEPLOY_SOURCE_OPTIONS = [
   },
   {
     value: 'docker-hub-tag',
-    label: 'Docker Hub Tags',
-    description: '适合直接跟随镜像标签推进部署。',
+    label: 'GHCR Tags',
+    description: '适合直接跟随 GHCR 镜像标签推进部署。',
   },
 ] as const;
 
@@ -482,7 +482,7 @@ export default function UpdateCenterSection() {
           </span>
         </div>
         <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.55 }}>
-          在设置页里统一查看 GitHub Releases、Docker Hub 版本和 K3s helper 状态，避免部署信息散落在多个入口。
+          在设置页里统一查看 GitHub Releases、GHCR 版本和 K3s helper 状态，避免部署信息散落在多个入口。
         </div>
         <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5, marginTop: 6 }}>
           {updateReminder.detail}
@@ -588,7 +588,7 @@ export default function UpdateCenterSection() {
             style={{ width: 16, height: 16, marginTop: 2, accentColor: 'var(--color-primary)' }}
           />
           <span style={{ display: 'grid', gap: 4 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>Docker Hub</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>GHCR</span>
             <span style={fieldHintStyle}>自动发现会保留稳定主候选，并额外列出最近的 dev / 分支 / sha 标签。</span>
           </span>
         </label>
@@ -661,7 +661,7 @@ export default function UpdateCenterSection() {
               value={config.imageRepository}
               onChange={(e) => setConfig((prev) => ({ ...prev, imageRepository: e.target.value }))}
               style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
-              placeholder="1467078763/metapi"
+              placeholder="ghcr.io/2263075977/metapi"
             />
           </label>
         </div>
@@ -737,7 +737,7 @@ export default function UpdateCenterSection() {
 
           <div style={sectionPanelStyle}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>Docker Hub</div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>GHCR</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 <span className={getSourceBadge(config.dockerHubTagsEnabled, status?.dockerHubTag?.normalizedVersion).className}>
                   {getSourceBadge(config.dockerHubTagsEnabled, status?.dockerHubTag?.normalizedVersion).label}
@@ -774,7 +774,7 @@ export default function UpdateCenterSection() {
                 className={config.defaultDeploySource === 'docker-hub-tag' ? 'btn btn-primary' : 'btn btn-ghost'}
                 style={config.defaultDeploySource === 'docker-hub-tag' ? undefined : { border: '1px solid var(--color-border)' }}
               >
-                部署 Docker Hub 标签
+                部署 GHCR 标签
               </button>
               {status?.dockerHubTag?.tagName ? (
                 <button
@@ -879,7 +879,7 @@ export default function UpdateCenterSection() {
             </div>
             <div style={{ borderTop: '1px dashed var(--color-border-light)', marginTop: 4, paddingTop: 12 }}>
               <div style={{ fontSize: 12, color: 'var(--color-text-primary)', fontWeight: 600, marginBottom: 6 }}>
-                手动部署 Docker Hub 标签
+                手动部署 GHCR 标签
               </div>
               <div style={{ ...fieldHintStyle, marginBottom: 10 }}>
                 自动发现已经覆盖最近的非稳定标签；如果你要部署更老或更特殊的 tag，仍可直接在这里填写。

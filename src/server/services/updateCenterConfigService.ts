@@ -25,10 +25,10 @@ export function getDefaultUpdateCenterConfig(): UpdateCenterConfig {
     namespace: 'default',
     releaseName: '',
     chartRef: '',
-    imageRepository: '1467078763/metapi',
-    githubReleasesEnabled: true,
+    imageRepository: 'ghcr.io/2263075977/metapi',
+    githubReleasesEnabled: false,
     dockerHubTagsEnabled: true,
-    defaultDeploySource: 'github-release',
+    defaultDeploySource: 'docker-hub-tag',
   };
 }
 

@@ -30,6 +30,18 @@ describe('update center version service', () => {
     fetchMock.mockReset();
   });
 
+  function mockGhcrTagsResponse(payload: unknown) {
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ token: 'ghcr-token' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }));
+  }
+
   describe('parseStableSemVer', () => {
     it('accepts stable semver strings with optional leading v', () => {
       expect(parseStableSemVer('1.2.3')).toMatchObject({
@@ -282,7 +294,7 @@ describe('update center version service', () => {
 
   describe('fetchLatestDockerHubTag', () => {
     it('prefers alias tags like latest and includes digest metadata', async () => {
-      fetchMock.mockResolvedValue(new Response(JSON.stringify({
+      mockGhcrTagsResponse({
         results: [
           {
             name: 'latest',
@@ -303,10 +315,7 @@ describe('update center version service', () => {
             tag_last_pushed: '2026-03-27T11:54:35.591877Z',
           },
         ],
-      }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }));
+      });
 
       const latest = await fetchLatestDockerHubTag();
       expect(latest).toMatchObject({
@@ -318,20 +327,23 @@ describe('update center version service', () => {
         displayVersion: 'latest @ sha256:efb2ee655386',
         publishedAt: '2026-03-29T11:54:35.591877Z',
       });
-      expect(String(fetchMock.mock.calls[0]?.[0] || '')).toContain('/v2/repositories/1467078763/metapi/tags');
+      expect(String(fetchMock.mock.calls[0]?.[0] || '')).toContain('/token?service=ghcr.io');
+      expect(String(fetchMock.mock.calls[1]?.[0] || '')).toContain('/v2/2263075977/metapi/tags/list');
+      expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+        headers: expect.objectContaining({
+          authorization: 'Bearer ghcr-token',
+        }),
+      });
     });
 
     it('falls back to the highest stable semver tag when no alias tags are present', async () => {
-      fetchMock.mockResolvedValue(new Response(JSON.stringify({
+      mockGhcrTagsResponse({
         results: [
           { name: 'sha-b9ae85e' },
           { name: 'v1.2.3' },
           { name: '1.10.0', digest: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
         ],
-      }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }));
+      });
 
       const latest = await fetchLatestDockerHubTag();
       expect(latest).toMatchObject({
@@ -347,7 +359,7 @@ describe('update center version service', () => {
 
   describe('fetchDockerHubTagCandidates', () => {
     it('returns the stable docker candidate plus recent non-stable tags from one lookup', async () => {
-      fetchMock.mockResolvedValue(new Response(JSON.stringify({
+      mockGhcrTagsResponse({
         results: [
           {
             name: 'latest',
@@ -365,10 +377,7 @@ describe('update center version service', () => {
             tag_last_pushed: '2026-03-30T10:54:35.591877Z',
           },
         ],
-      }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }));
+      });
 
       const candidates = await fetchDockerHubTagCandidates();
       expect(candidates.primary).toMatchObject({

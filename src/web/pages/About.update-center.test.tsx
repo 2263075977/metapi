@@ -69,7 +69,7 @@ describe('About update center', () => {
       expect(text).toContain('v1.2.3');
       expect(text).toContain('GitHub 稳定版');
       expect(text).toContain('1.3.0');
-      expect(text).toContain('Docker Hub');
+      expect(text).toContain('GHCR 镜像');
       expect(text).toContain('latest @ sha256:efb2ee655386');
       expect(text).toContain('发现新版本');
       expect(text).toContain('前往更新中心');
