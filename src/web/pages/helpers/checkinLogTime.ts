@@ -39,6 +39,14 @@ export function parseServerUtcDateTime(value: string | null | undefined): Date |
   return parseServerUtcDate(value).date;
 }
 
+export function readClientTimeZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function formatWithParts(
   value: string | null | undefined,
   options: Intl.DateTimeFormatOptions,

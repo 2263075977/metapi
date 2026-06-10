@@ -1,1 +1,1 @@
--- no schema changes detected for postgres
+DROP TABLE IF EXISTS "site_announcements";

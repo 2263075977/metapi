@@ -20,7 +20,6 @@ import { taskRoutes } from './routes/api/tasks.js';
 import { testRoutes } from './routes/api/test.js';
 import { downstreamApiKeysRoutes } from './routes/api/downstreamApiKeys.js';
 import { oauthRoutes } from './routes/api/oauth.js';
-import { siteAnnouncementsRoutes } from './routes/api/siteAnnouncements.js';
 import { updateCenterRoutes } from './routes/api/updateCenter.js';
 import { proxyRoutes } from './routes/proxy/router.js';
 import { startScheduler } from './services/checkinScheduler.js';
@@ -34,7 +33,6 @@ import { ensureDefaultSitesSeeded } from './services/defaultSiteSeedService.js';
 import { ensureOauthIdentityBackfill } from './services/oauth/oauthIdentityBackfill.js';
 import { ensureOauthProviderSitesExist } from './services/oauth/oauthSiteRegistry.js';
 import { startOAuthLoopbackCallbackServers, stopOAuthLoopbackCallbackServers } from './services/oauth/localCallbackServer.js';
-import { startSiteAnnouncementPolling, stopSiteAnnouncementPolling } from './services/siteAnnouncementPollingService.js';
 import {
   startModelAvailabilityProbeScheduler,
   stopModelAvailabilityProbeScheduler,
@@ -221,7 +219,6 @@ await app.register(settingsRoutes);
 await app.register(accountTokensRoutes);
 await app.register(searchRoutes);
 await app.register(eventsRoutes);
-await app.register(siteAnnouncementsRoutes);
 await app.register(updateCenterRoutes);
 await app.register(taskRoutes);
 await app.register(testRoutes);
@@ -261,7 +258,6 @@ if (existsSync(webDir)) {
 // Start scheduler
 await startScheduler();
 await reloadBackupWebdavScheduler();
-startSiteAnnouncementPolling();
 startModelAvailabilityProbeScheduler();
 startChannelRecoveryProbeScheduler();
 startSub2ApiManagedRefreshScheduler();
@@ -276,7 +272,6 @@ try {
 setLegacyProxyLogRetentionFallbackEnabled(!config.logCleanupConfigured);
 startProxyFileRetentionService();
 app.addHook('onClose', async () => {
-  stopSiteAnnouncementPolling();
   stopUpdateCenterPolling();
   stopProxyFileRetentionService();
   stopProxyLogRetentionService();

@@ -164,6 +164,63 @@ describe('schema artifact generator', () => {
     );
   });
 
+  it('generates drops for retired tables while keeping other destructive diffs rejected', () => {
+    const previousContract: SchemaContract = {
+      tables: {
+        sites: {
+          columns: {
+            id: makeColumn({ logicalType: 'integer', notNull: true, primaryKey: true }),
+          },
+        },
+        site_announcements: {
+          columns: {
+            id: makeColumn({ logicalType: 'integer', notNull: true, primaryKey: true }),
+            site_id: makeColumn({ logicalType: 'integer', notNull: true }),
+          },
+        },
+      },
+      indexes: [
+        {
+          name: 'site_announcements_read_at_idx',
+          table: 'site_announcements',
+          columns: ['read_at'],
+          unique: false,
+        },
+      ],
+      uniques: [
+        {
+          name: 'site_announcements_site_source_key_unique',
+          table: 'site_announcements',
+          columns: ['site_id', 'source_key'],
+        },
+      ],
+      foreignKeys: [
+        {
+          table: 'site_announcements',
+          columns: ['site_id'],
+          referencedTable: 'sites',
+          referencedColumns: ['id'],
+          onDelete: 'cascade',
+        },
+      ],
+    };
+    const currentContract: SchemaContract = {
+      tables: {
+        sites: previousContract.tables.sites,
+      },
+      indexes: [],
+      uniques: [],
+      foreignKeys: [],
+    };
+
+    expect(generateUpgradeSql('mysql', currentContract, previousContract)).toContain(
+      'DROP TABLE IF EXISTS `site_announcements`',
+    );
+    expect(generateUpgradeSql('postgres', currentContract, previousContract)).toContain(
+      'DROP TABLE IF EXISTS "site_announcements"',
+    );
+  });
+
   it('rejects destructive diffs when generating additive upgrades', () => {
     const current = readSchemaContract();
     const previous = structuredClone(current);

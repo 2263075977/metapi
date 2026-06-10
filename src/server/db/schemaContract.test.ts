@@ -17,6 +17,7 @@ describe('schema contract generation', () => {
       defaultValue: "'ready'",
     });
     expect(contract.tables.site_disabled_models).toBeDefined();
+    expect(contract.tables.site_announcements).toBeUndefined();
     expect(contract.tables.downstream_api_keys).toBeDefined();
     expect(contract.tables.proxy_files).toBeDefined();
     expect(contract.tables.admin_snapshots.columns.snapshot_key).toMatchObject({

@@ -15,7 +15,6 @@ function createDbSchemaMock() {
     settings: { __table: 'settings' },
     sites: { __table: 'sites' },
     siteApiEndpoints: { __table: 'siteApiEndpoints' },
-    siteAnnouncements: { __table: 'siteAnnouncements' },
     siteDisabledModels: { __table: 'siteDisabledModels' },
     accounts: { __table: 'accounts' },
     accountTokens: { __table: 'accountTokens' },
@@ -216,7 +215,6 @@ describe('databaseMigrationService', () => {
           customHeaders: '{"x-site-scope":"internal"}',
           status: 'active',
         }],
-        siteAnnouncements: [],
         siteDisabledModels: [],
         accounts: [],
         accountTokens: [],
@@ -271,7 +269,6 @@ describe('databaseMigrationService', () => {
           createdAt: '2026-03-30T00:00:00.000Z',
           updatedAt: '2026-03-31T12:05:00.000Z',
         }],
-        siteAnnouncements: [],
         siteDisabledModels: [],
         accounts: [],
         accountTokens: [],
@@ -334,7 +331,6 @@ describe('databaseMigrationService', () => {
           customHeaders: { 'x-site-scope': 'internal' },
           status: 'active',
         }],
-        siteAnnouncements: [],
         siteDisabledModels: [],
         accounts: [{
           id: 2,
@@ -435,7 +431,6 @@ describe('databaseMigrationService', () => {
           customHeaders: { 'x-site-scope': 'internal' },
           status: 'active',
         }],
-        siteAnnouncements: [],
         siteDisabledModels: [],
         accounts: [{
           id: 2,
@@ -523,7 +518,6 @@ describe('databaseMigrationService', () => {
           customHeaders: { 'x-site-scope': 'internal' },
           status: 'active',
         }],
-        siteAnnouncements: [],
         siteDisabledModels: [],
         accounts: [{
           id: 2,
@@ -612,7 +606,6 @@ describe('databaseMigrationService', () => {
           customHeaders: { 'x-site-scope': 'internal' },
           status: 'active',
         }],
-        siteAnnouncements: [],
         siteDisabledModels: [],
         accounts: [{
           id: 2,
@@ -696,7 +689,6 @@ describe('databaseMigrationService', () => {
           customHeaders: { 'x-site-scope': 'internal' },
           status: 'active',
         }],
-        siteAnnouncements: [],
         siteDisabledModels: [],
         accounts: [{
           id: 2,
@@ -777,7 +769,6 @@ describe('databaseMigrationService', () => {
       timestamp: Date.now(),
       accounts: {
         sites: [],
-        siteAnnouncements: [],
         siteDisabledModels: [{
           id: 3,
           siteId: 12,
@@ -860,7 +851,7 @@ describe('databaseMigrationService', () => {
     expect(tokenRouteStatement?.values[routeModeIndex]).toBe('explicit_group');
   });
 
-  it('includes site announcements in migration statements', () => {
+  it('ignores legacy site announcements in migration statements', () => {
     const statements = __databaseMigrationServiceTestUtils.buildStatements({
       version: 'test',
       timestamp: Date.now(),
@@ -905,37 +896,15 @@ describe('databaseMigrationService', () => {
       },
     } as any);
 
-    const statement = statements.find((item) => item.table === 'site_announcements');
-    expect(statement).toBeDefined();
-    expect(statement?.columns).toContain('source_key');
-    expect(statement?.values[statement?.columns.indexOf('title') ?? -1]).toBe('????');
+    expect(statements.some((item) => item.table === 'site_announcements')).toBe(false);
   });
 
-  it('includes site announcements in migration summary', async () => {
+  it('excludes retired site announcements from migration summary', async () => {
     vi.resetModules();
 
     const rowsByTable = {
       settings: [],
       sites: [],
-      siteAnnouncements: [{
-        id: 11,
-        siteId: 3,
-        platform: 'openai',
-        sourceKey: 'notice-1',
-        title: '????',
-        content: '????',
-        level: 'warning',
-        sourceUrl: 'https://example.com/notice',
-        startsAt: '2026-03-20T00:00:00.000Z',
-        endsAt: '2026-03-21T00:00:00.000Z',
-        upstreamCreatedAt: '2026-03-19T00:00:00.000Z',
-        upstreamUpdatedAt: '2026-03-20T00:00:00.000Z',
-        firstSeenAt: '2026-03-20T00:00:00.000Z',
-        lastSeenAt: '2026-03-20T01:00:00.000Z',
-        readAt: null,
-        dismissedAt: null,
-        rawPayload: '{"id":"notice-1"}',
-      }],
       siteDisabledModels: [],
       accounts: [],
       accountTokens: [],
@@ -981,7 +950,7 @@ describe('databaseMigrationService', () => {
         overwrite: true,
       });
 
-      expect(summary.rows.siteAnnouncements).toBe(1);
+      expect('siteAnnouncements' in summary.rows).toBe(false);
       expect(client.begin).toHaveBeenCalledTimes(1);
       expect(client.commit).toHaveBeenCalledTimes(1);
       expect(client.close).toHaveBeenCalledTimes(1);
@@ -998,7 +967,6 @@ describe('databaseMigrationService', () => {
       timestamp: Date.now(),
       accounts: {
         sites: [],
-        siteAnnouncements: [],
         siteDisabledModels: [],
         accounts: [],
         accountTokens: [],

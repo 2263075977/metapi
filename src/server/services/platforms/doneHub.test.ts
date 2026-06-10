@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { AddressInfo } from 'node:net';
-import { createHash } from 'node:crypto';
 import { DoneHubAdapter } from './doneHub.js';
 
 describe('DoneHubAdapter', () => {
@@ -104,19 +103,4 @@ describe('DoneHubAdapter', () => {
     expect(balance.quota).toBe(100);
   });
 
-  it('normalizes the global site notice from /api/notice', async () => {
-    const adapter = new DoneHubAdapter();
-    const rows = await adapter.getSiteAnnouncements(baseUrl, 'token');
-
-    expect(rows).toEqual([
-      {
-        sourceKey: `notice:${createHash('sha1').update('Scheduled maintenance tonight').digest('hex')}`,
-        title: 'Site notice',
-        content: 'Scheduled maintenance tonight',
-        level: 'info',
-        sourceUrl: '/api/notice',
-        rawPayload: { success: true, data: 'Scheduled maintenance tonight' },
-      },
-    ]);
-  });
 });

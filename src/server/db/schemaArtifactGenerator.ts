@@ -25,6 +25,12 @@ type SqlGenerationOptions = {
   mysqlIndexPrefixRequirements?: MysqlIndexPrefixRequirementMap;
 };
 
+const RETIRED_SCHEMA_TABLES = new Set(['site_announcements']);
+
+export function isRetiredSchemaTable(tableName: string): boolean {
+  return RETIRED_SCHEMA_TABLES.has(tableName);
+}
+
 function resolveDbDir(): string {
   return dirname(fileURLToPath(import.meta.url));
 }
@@ -267,6 +273,9 @@ function assertAdditiveSchemaDiff(currentContract: SchemaContract, previousContr
   for (const [tableName, previousTable] of Object.entries(previousContract.tables)) {
     const currentTable = currentContract.tables[tableName];
     if (!currentTable) {
+      if (isRetiredSchemaTable(tableName)) {
+        continue;
+      }
       violations.push(`removed table ${tableName}`);
       continue;
     }
@@ -288,6 +297,9 @@ function assertAdditiveSchemaDiff(currentContract: SchemaContract, previousContr
   for (const previousIndex of previousContract.indexes) {
     const currentIndex = currentIndexes.get(previousIndex.name);
     if (!currentIndex) {
+      if (isRetiredSchemaTable(previousIndex.table)) {
+        continue;
+      }
       violations.push(`removed index ${previousIndex.name}`);
       continue;
     }
@@ -300,6 +312,9 @@ function assertAdditiveSchemaDiff(currentContract: SchemaContract, previousContr
   for (const previousUnique of previousContract.uniques) {
     const currentUnique = currentUniques.get(previousUnique.name);
     if (!currentUnique) {
+      if (isRetiredSchemaTable(previousUnique.table)) {
+        continue;
+      }
       violations.push(`removed unique ${previousUnique.name}`);
       continue;
     }
@@ -311,6 +326,9 @@ function assertAdditiveSchemaDiff(currentContract: SchemaContract, previousContr
   const currentForeignKeys = new Set(currentContract.foreignKeys.map(serializeForeignKey));
   for (const previousForeignKey of previousContract.foreignKeys) {
     if (!currentForeignKeys.has(serializeForeignKey(previousForeignKey))) {
+      if (isRetiredSchemaTable(previousForeignKey.table)) {
+        continue;
+      }
       violations.push(`removed foreign key ${previousForeignKey.table}(${previousForeignKey.columns.join(',')})`);
     }
   }
@@ -348,6 +366,10 @@ function buildAddColumnStatement(
   return `ALTER TABLE ${quoteIdentifier(dialect, tableName)} ADD COLUMN ${buildColumnDefinition(dialect, columnName, column)}`;
 }
 
+function buildDropTableStatement(dialect: SqlDialect, tableName: string): string {
+  return `DROP TABLE IF EXISTS ${quoteIdentifier(dialect, tableName)}`;
+}
+
 export function generateUpgradeSql(
   dialect: SqlDialect,
   currentContract: SchemaContract,
@@ -363,6 +385,9 @@ export function generateUpgradeSql(
   const previousTableNames = new Set(Object.keys(previousContract.tables));
   const currentTableNames = Object.keys(currentContract.tables).sort((left, right) => left.localeCompare(right, 'en'));
   const addedTableNames = currentTableNames.filter((tableName) => !previousTableNames.has(tableName));
+  const droppedTableNames = [...previousTableNames]
+    .filter((tableName) => !currentContract.tables[tableName] && isRetiredSchemaTable(tableName))
+    .sort((left, right) => left.localeCompare(right, 'en'));
   const addedTablesContract: SchemaContract = {
     tables: Object.fromEntries(addedTableNames.map((tableName) => [tableName, currentContract.tables[tableName]])),
     indexes: currentContract.indexes.filter((index) => addedTableNames.includes(index.table)),
@@ -404,7 +429,13 @@ export function generateUpgradeSql(
     .sort((left, right) => left.name.localeCompare(right.name, 'en'))
     .map((index) => buildIndexStatement(dialect, index, currentContract, options));
 
-  const statements = [...addedTableStatements, ...addColumnStatements, ...uniqueStatements, ...indexStatements];
+  const statements = [
+    ...addedTableStatements,
+    ...addColumnStatements,
+    ...uniqueStatements,
+    ...indexStatements,
+    ...droppedTableNames.map((tableName) => buildDropTableStatement(dialect, tableName)),
+  ];
   if (statements.length === 0) {
     return `-- no schema changes detected for ${dialect}\n`;
   }

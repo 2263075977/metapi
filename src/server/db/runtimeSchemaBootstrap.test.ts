@@ -100,6 +100,28 @@ describe('runtime schema bootstrap', () => {
     expect(statements.some((sqlText) => sqlText.includes('CREATE UNIQUE INDEX `proxy_files_public_id_unique`'))).toBe(true);
   });
 
+  it('emits drops for retired runtime tables found in live external schemas', () => {
+    const liveContract = __runtimeSchemaBootstrapTestUtils.cloneContract(currentContract);
+    liveContract.tables.site_announcements = {
+      columns: {
+        id: {
+          logicalType: 'integer',
+          notNull: true,
+          defaultValue: null,
+          primaryKey: true,
+        },
+      },
+    };
+
+    const statements = __runtimeSchemaBootstrapTestUtils.buildExternalUpgradeStatements(
+      'mysql',
+      currentContract,
+      liveContract,
+    );
+
+    expect(statements).toContain('DROP TABLE IF EXISTS `site_announcements`');
+  });
+
   it('ignores duplicate mysql index and column errors when replaying additive schema statements', async () => {
     const executedSql: string[] = [];
     const duplicateColumnSql = __runtimeSchemaBootstrapTestUtils.splitSqlStatements(

@@ -10,6 +10,7 @@ import {
 import {
   generateBootstrapSql,
   generateUpgradeSql,
+  isRetiredSchemaTable,
   type MysqlIndexPrefixRequirementMap,
 } from './schemaArtifactGenerator.js';
 import { installPostgresJsonTextParsers } from './postgresJsonTextParsers.js';
@@ -203,6 +204,9 @@ function buildCompatibleRuntimeBaseline(
   for (const [tableName, liveTable] of Object.entries(liveContract.tables)) {
     const currentTable = currentContract.tables[tableName];
     if (!currentTable) {
+      if (isRetiredSchemaTable(tableName)) {
+        baseline.tables[tableName] = liveTable;
+      }
       continue;
     }
 
@@ -220,6 +224,9 @@ function buildCompatibleRuntimeBaseline(
   const currentIndexes = new Map(currentContract.indexes.map((index) => [index.name, index]));
   baseline.indexes = liveContract.indexes
     .filter((index) => {
+      if (isRetiredSchemaTable(index.table) && !currentContract.tables[index.table]) {
+        return true;
+      }
       const currentIndex = currentIndexes.get(index.name);
       return currentIndex && serializeIndex(currentIndex) === serializeIndex(index);
     });
@@ -227,13 +234,21 @@ function buildCompatibleRuntimeBaseline(
   const currentUniques = new Map(currentContract.uniques.map((unique) => [unique.name, unique]));
   baseline.uniques = liveContract.uniques
     .filter((unique) => {
+      if (isRetiredSchemaTable(unique.table) && !currentContract.tables[unique.table]) {
+        return true;
+      }
       const currentUnique = currentUniques.get(unique.name);
       return currentUnique && serializeUnique(currentUnique) === serializeUnique(unique);
     });
 
   const currentForeignKeys = new Set(currentContract.foreignKeys.map(serializeForeignKey));
   baseline.foreignKeys = liveContract.foreignKeys
-    .filter((foreignKey) => currentForeignKeys.has(serializeForeignKey(foreignKey)));
+    .filter((foreignKey) => {
+      if (isRetiredSchemaTable(foreignKey.table) && !currentContract.tables[foreignKey.table]) {
+        return true;
+      }
+      return currentForeignKeys.has(serializeForeignKey(foreignKey));
+    });
 
   return baseline;
 }
