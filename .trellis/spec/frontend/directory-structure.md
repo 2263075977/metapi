@@ -76,3 +76,20 @@ features keep importing the shared component from the top-level page file.
 
 **Fix**: Update tests and consumers to import the domain module directly. Keep
 the top-level page focused on route behavior.
+
+### Source-Reading Architecture Tests Still Point At The Old Page
+
+**Symptom**: Runtime tests pass, but CI fails in architecture tests that read a
+page file as text and expect layout primitives such as `ResponsiveFilterPanel`,
+`ResponsiveBatchActionBar`, `CenteredModal`, or class names.
+
+**Cause**: Moving a reusable surface into `src/web/pages/<domain>/` changes the
+source file that owns those primitives. Tests that assert source-level adoption
+must follow the new owner file.
+
+**Fix**: Search for the old page path in tests and update those source-reading
+assertions to the extracted domain module.
+
+```bash
+rg "src/web/pages/Tokens\\.tsx|readPageSource\\('src/web/pages/Tokens" src/web
+```
