@@ -108,3 +108,36 @@ Fully removed the site announcements feature, including frontend navigation and 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 4: Proxy boundary cleanup
+
+**Date**: 2026-06-10
+**Task**: Proxy boundary cleanup
+**Branch**: `main`
+
+### Summary
+
+Moved downstream proxy policy helpers into proxy-core, added a boundary architecture test, updated backend directory spec, and validated with server typecheck, targeted Vitest runs, drift check, and diff check.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `271a056` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
