@@ -1,30 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 describe('docker workflows', () => {
-  it('publishes armv7 docker images in ci and release workflows', () => {
+  it('publishes the personal GHCR latest image for Synology amd64 usage', () => {
     const ciWorkflow = readFileSync(resolve(process.cwd(), '.github/workflows/ci.yml'), 'utf8');
-    const releaseWorkflow = readFileSync(resolve(process.cwd(), '.github/workflows/release.yml'), 'utf8');
+    const synologyWorkflow = readFileSync(resolve(process.cwd(), '.github/workflows/synology-docker.yml'), 'utf8');
 
-    expect(ciWorkflow).toContain('arch: armv7');
-    expect(ciWorkflow).toContain('platform: linux/arm/v7');
-    expect(ciWorkflow).toContain('"${tag}-armv7"');
+    expect(ciWorkflow).not.toContain('publish-docker');
+    expect(ciWorkflow).not.toContain('DOCKERHUB_IMAGE');
 
-    expect(releaseWorkflow).toContain('arch: armv7');
-    expect(releaseWorkflow).toContain('platform: linux/arm/v7');
-    expect(releaseWorkflow).toContain('"${tag}-armv7"');
+    expect(synologyWorkflow).toContain("branches: ['main']");
+    expect(synologyWorkflow).toContain('registry: ghcr.io');
+    expect(synologyWorkflow).toContain('platforms: linux/amd64');
+    expect(synologyWorkflow).toContain('${{ steps.meta.outputs.image }}:latest');
+    expect(synologyWorkflow).toContain('password: ${{ secrets.GITHUB_TOKEN }}');
+    expect(synologyWorkflow).not.toContain('DOCKERHUB');
+    expect(synologyWorkflow).not.toContain('metapi-synology');
   });
 
-  it('derives Docker Hub image names from the configured username secret', () => {
-    const ciWorkflow = readFileSync(resolve(process.cwd(), '.github/workflows/ci.yml'), 'utf8');
-    const releaseWorkflow = readFileSync(resolve(process.cwd(), '.github/workflows/release.yml'), 'utf8');
-
-    expect(ciWorkflow).toContain('DOCKERHUB_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/metapi');
-    expect(ciWorkflow).not.toContain('images: 1467078763/metapi');
-
-    expect(releaseWorkflow).toContain('DOCKERHUB_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/metapi');
-    expect(releaseWorkflow).not.toContain('1467078763/metapi');
+  it('keeps the old desktop and multi-channel release workflow removed', () => {
+    expect(existsSync(resolve(process.cwd(), '.github/workflows/release.yml'))).toBe(false);
   });
 
   it('uses an armv7-capable node base image in the Dockerfile', () => {

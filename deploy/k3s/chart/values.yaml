@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: 1467078763/metapi
+  repository: ghcr.io/2263075977/metapi
   tag: latest
   digest: ""
   pullPolicy: Always

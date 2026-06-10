@@ -2,21 +2,16 @@ name: Synology Docker Image
 
 on:
   push:
-    tags: ['v*']
+    branches: ['main']
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag to publish, for example v1.3.0'
-        required: true
-        type: string
 
 permissions:
   contents: read
   packages: write
 
 concurrency:
-  group: synology-docker-${{ github.ref_name }}
-  cancel-in-progress: false
+  group: synology-docker-latest
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -28,37 +23,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Resolve image version
+      - name: Resolve image name
         id: meta
         shell: bash
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          INPUT_VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            version="${INPUT_VERSION}"
-          else
-            version="${GITHUB_REF_NAME}"
-          fi
-
-          if [ -z "$version" ]; then
-            echo "Version is required." >&2
-            exit 1
-          fi
-          if [ "$version" = "latest" ]; then
-            echo "This workflow publishes version tags only, not latest." >&2
-            exit 1
-          fi
-          if [[ ! "$version" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
-            echo "Invalid Docker tag: $version" >&2
-            exit 1
-          fi
-
-          image="ghcr.io/${GITHUB_REPOSITORY,,}-synology"
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
           echo "image=$image" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -77,9 +48,9 @@ jobs:
           file: docker/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}
+          tags: ${{ steps.meta.outputs.image }}:latest
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.version=latest
           cache-from: type=gha,scope=synology-amd64
           cache-to: type=gha,mode=max,scope=synology-amd64
