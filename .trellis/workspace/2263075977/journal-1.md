@@ -306,3 +306,36 @@ Extracted the Proxy Logs debug trace panel/list presentation into a controlled p
 ### Next Steps
 
 - None - task complete
+
+
+## Session 10: Extract ProxyLogs controls surface
+
+**Date**: 2026-06-10
+**Task**: Extract ProxyLogs controls surface
+**Branch**: `main`
+
+### Summary
+
+Extracted ProxyLogs header, filters, invalid time alert, and pagination into a proxy-logs controls surface while preserving route-owned state and validation coverage.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `558e869` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
