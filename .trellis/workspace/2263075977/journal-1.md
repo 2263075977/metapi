@@ -74,3 +74,37 @@ Switched personal deployment to GHCR latest Docker image, removed desktop/GitHub
 ### Next Steps
 
 - None - task complete
+
+
+## Session 3: Remove site announcements feature
+
+**Date**: 2026-06-10
+**Task**: Remove site announcements feature
+**Branch**: `main`
+
+### Summary
+
+Fully removed the site announcements feature, including frontend navigation and page, backend APIs and services, platform adapter contracts, active schema/table artifacts, backup/database migration handling, docs references, and recorded the retired-table flow in backend specs.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0501537` | (see git log) |
+| `57f560a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
