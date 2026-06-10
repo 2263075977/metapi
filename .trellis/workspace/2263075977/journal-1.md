@@ -207,3 +207,36 @@ Moved the reusable TokensPanel out of the top-level Tokens page into a domain mo
 ### Next Steps
 
 - None - task complete
+
+
+## Session 7: Extract ProxyLogs debug surfaces
+
+**Date**: 2026-06-10
+**Task**: Extract ProxyLogs debug surfaces
+**Branch**: `main`
+
+### Summary
+
+Extracted ProxyLogs debug settings and trace detail surfaces into page-domain modules, kept page orchestration state in ProxyLogs, validated focused tests/typechecks/drift checks, and updated frontend directory-structure guidance.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `bf0af60` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
