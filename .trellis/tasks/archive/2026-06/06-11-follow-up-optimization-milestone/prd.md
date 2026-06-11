@@ -48,14 +48,20 @@ independently verifiable without starting broad implementation in this session.
 
 ## Acceptance Criteria
 
-- [ ] Parent task has child links for all seven deliverable tasks.
-- [ ] Each child has a PRD with scope, constraints, acceptance criteria, and a
+- [x] Parent task has child links for all seven deliverable tasks.
+- [x] Each child has a PRD with scope, constraints, acceptance criteria, and a
       focused validation path.
-- [ ] The setup task for creating this tree is archived separately, leaving this
+- [x] The setup task for creating this tree is archived separately, leaving this
       parent roadmap and deliverable children available for future work.
-- [ ] `python ./.trellis/scripts/task.py list` shows the deliverable children
+- [x] `python ./.trellis/scripts/task.py list` shows the deliverable children
       under this parent.
-- [ ] `npm run repo:drift-check` remains 0 violations / 0 tracked debt.
+- [x] `npm run repo:drift-check` remains 0 violations / 0 tracked debt.
+
+## Final Integration
+
+- All eight child tasks are archived or completed under this parent.
+- `python ./.trellis/scripts/task.py list` reports this parent as `[8/8 done]`.
+- `npm run repo:drift-check` reports 0 violations / 0 tracked debt.
 
 ## Out of Scope
 
