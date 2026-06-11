@@ -23,12 +23,12 @@ orchestration surface backed by domain components and hooks.
 
 ## Acceptance Criteria
 
-- [ ] `Accounts.tsx` primarily coordinates layout, data loading, and composed
+- [x] `Accounts.tsx` primarily coordinates layout, data loading, and composed
       domain surfaces.
-- [ ] Extracted code lives under `src/web/pages/accounts/` or existing shared
+- [x] Extracted code lives under `src/web/pages/accounts/` or existing shared
       web helpers.
-- [ ] No top-level page imports another top-level page.
-- [ ] Accounts workflows, filters, batch actions, and modal behavior remain
+- [x] No top-level page imports another top-level page.
+- [x] Accounts workflows, filters, batch actions, and modal behavior remain
       unchanged.
 
 ## Validation

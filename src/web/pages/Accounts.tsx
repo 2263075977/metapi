@@ -2,16 +2,18 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import CenteredModal from "../components/CenteredModal.js";
-import ResponsiveFilterPanel from "../components/ResponsiveFilterPanel.js";
-import ResponsiveFormGrid from "../components/ResponsiveFormGrid.js";
-import ResponsiveBatchActionBar from "../components/ResponsiveBatchActionBar.js";
 import { useToast } from "../components/Toast.js";
 import ModernSelect from "../components/ModernSelect.js";
 import { MobileCard, MobileField } from "../components/MobileCard.js";
 import { useIsMobile } from "../components/useIsMobile.js";
-import DeleteConfirmModal from "../components/DeleteConfirmModal.js";
 import SiteBadgeLink from "../components/SiteBadgeLink.js";
+import AccountEditModal from "./accounts/AccountEditModal.js";
+import AccountsChromeSurface, {
+  type AccountDeleteConfirmState,
+  type ConnectionsSegment,
+} from "./accounts/AccountsChromeSurface.js";
 import AccountModelsModal from "./accounts/AccountModelsModal.js";
+import AccountRebindSessionModal from "./accounts/AccountRebindSessionModal.js";
 import {
   buildAddAccountPrereqHint,
   buildVerifyFailureHint,
@@ -37,38 +39,6 @@ import { shouldIgnoreRowSelectionClick } from "./helpers/rowSelection.js";
 import { SITE_DOCS_URL } from "../docsLink.js";
 import { getSiteInitializationPreset } from "../../shared/siteInitializationPresets.js";
 import { parseBatchApiKeys } from "../../shared/apiKeyBatch.js";
-
-type ConnectionsSegment = "session" | "apikey" | "tokens";
-
-const ACCOUNT_SEGMENTS: Array<{
-  value: ConnectionsSegment;
-  label: string;
-  tooltip: string;
-  tooltipSide: "top" | "bottom";
-  tooltipAlign: "start" | "center" | "end";
-}> = [
-  {
-    value: "session",
-    label: "账号管理",
-    tooltip: "用于签到、余额、状态维护",
-    tooltipSide: "bottom",
-    tooltipAlign: "start",
-  },
-  {
-    value: "apikey",
-    label: "API Key管理",
-    tooltip: "只有 Base URL + Key 时使用，只负责代理调用",
-    tooltipSide: "bottom",
-    tooltipAlign: "center",
-  },
-  {
-    value: "tokens",
-    label: "账号令牌管理",
-    tooltip: "从账号同步或手动维护，供路由实际调用",
-    tooltipSide: "bottom",
-    tooltipAlign: "end",
-  },
-];
 
 const SITE_SELECT_SEARCH_PLACEHOLDER = "筛选站点（名称 / 平台 / URL）";
 
@@ -139,12 +109,8 @@ export default function Accounts() {
     useState<React.ReactNode>(null);
   const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>([]);
   const [batchActionLoading, setBatchActionLoading] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<null | {
-    mode: "single" | "batch";
-    accountId?: number;
-    accountName?: string;
-    count?: number;
-  }>(null);
+  const [deleteConfirm, setDeleteConfirm] =
+    useState<AccountDeleteConfirmState>(null);
   const [editingAccount, setEditingAccount] = useState<any | null>(null);
   const [editForm, setEditForm] = useState({
     username: "",
@@ -1251,290 +1217,52 @@ export default function Accounts() {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
-        <h2 className="page-title">{tr("连接管理")}</h2>
-        {activeSegment !== "tokens" && (
-          <div className="page-actions accounts-page-actions">
-            {isMobile ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setShowMobileTools(true)}
-                  className="btn btn-ghost"
-                  style={{ border: "1px solid var(--color-border)" }}
-                >
-                  排序与操作
-                </button>
-                <button
-                  type="button"
-                  data-testid="accounts-mobile-select-all"
-                  onClick={() =>
-                    toggleSelectAllVisibleAccounts(!allVisibleAccountsSelected)
-                  }
-                  className="btn btn-ghost"
-                  style={{ border: "1px solid var(--color-border)" }}
-                >
-                  {allVisibleAccountsSelected ? "取消全选" : "全选可见项"}
-                </button>
-              </>
-            ) : (
-              <>
-                <div
-                  className="accounts-sort-select"
-                  style={{ minWidth: 156, position: "relative", zIndex: 20 }}
-                >
-                  <ModernSelect
-                    size="sm"
-                    value={sortMode}
-                    onChange={(nextValue) => setSortMode(nextValue as SortMode)}
-                    options={[
-                      { value: "custom", label: "自定义排序" },
-                      { value: "balance-desc", label: "余额高到低" },
-                      { value: "balance-asc", label: "余额低到高" },
-                    ]}
-                    placeholder="自定义排序"
-                  />
-                </div>
-                {activeSegment === "session" && (
-                  <button
-                    onClick={() =>
-                      withLoading(
-                        "checkin-all",
-                        () => api.triggerCheckinAll(),
-                        "已触发全部签到",
-                      )
-                    }
-                    disabled={actionLoading["checkin-all"]}
-                    className="btn btn-soft-primary"
-                  >
-                    {actionLoading["checkin-all"] ? (
-                      <>
-                        <span className="spinner spinner-sm" />
-                        {tr("签到中...")}
-                      </>
-                    ) : (
-                      tr("全部签到")
-                    )}
-                  </button>
-                )}
-                <button
-                  onClick={handleRefreshRuntimeHealth}
-                  disabled={actionLoading["health-refresh"]}
-                  className="btn btn-soft-primary"
-                >
-                  {actionLoading["health-refresh"] ? (
-                    <>
-                      <span className="spinner spinner-sm" />
-                      {tr("刷新状态中...")}
-                    </>
-                  ) : (
-                    tr("刷新账户状态")
-                  )}
-                </button>
-              </>
-            )}
-            <button
-              onClick={() => {
-                const nextOpen = !showAdd;
-                if (!nextOpen) {
-                  closeAddPanel();
-                  return;
-                }
-                setEditingAccount(null);
-                closeRebindPanel();
-                setShowAdd(true);
-                resetAddForms(activeAddCredentialMode);
-              }}
-              className="btn btn-primary"
-            >
-              {showAdd ? tr("取消") : tr("+ 添加连接")}
-            </button>
-          </div>
-        )}
-        {activeSegment === "tokens" && embeddedTokenActions}
-      </div>
-
-      <ResponsiveFilterPanel
+      <AccountsChromeSurface
+        activeSegment={activeSegment}
+        embeddedTokenActions={embeddedTokenActions}
         isMobile={isMobile}
-        mobileOpen={showMobileTools}
-        onMobileClose={() => setShowMobileTools(false)}
-        mobileTitle="连接排序与操作"
-        mobileContent={
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-                排序方式
-              </div>
-              <ModernSelect
-                value={sortMode}
-                onChange={(nextValue) => setSortMode(nextValue as SortMode)}
-                options={[
-                  { value: "custom", label: "自定义排序" },
-                  { value: "balance-desc", label: "余额高到低" },
-                  { value: "balance-asc", label: "余额低到高" },
-                ]}
-                placeholder="自定义排序"
-              />
-            </div>
-            {activeSegment === "session" && (
-              <button
-                onClick={async () => {
-                  setShowMobileTools(false);
-                  await withLoading(
-                    "checkin-all",
-                    () => api.triggerCheckinAll(),
-                    "已触发全部签到",
-                  );
-                }}
-                disabled={actionLoading["checkin-all"]}
-                className="btn btn-ghost"
-                style={{ border: "1px solid var(--color-border)" }}
-              >
-                {actionLoading["checkin-all"] ? (
-                  <>
-                    <span className="spinner spinner-sm" />
-                    {tr("签到中...")}
-                  </>
-                ) : (
-                  tr("全部签到")
-                )}
-              </button>
-            )}
-            <button
-              onClick={async () => {
-                setShowMobileTools(false);
-                await handleRefreshRuntimeHealth();
-              }}
-              disabled={actionLoading["health-refresh"]}
-              className="btn btn-ghost"
-              style={{ border: "1px solid var(--color-border)" }}
-            >
-              {actionLoading["health-refresh"] ? (
-                <>
-                  <span className="spinner spinner-sm" />
-                  {tr("刷新状态中...")}
-                </>
-              ) : (
-                tr("刷新账户状态")
-              )}
-            </button>
-          </div>
-        }
-      />
-
-      <div
-        style={{
-          display: "inline-flex",
-          gap: 4,
-          padding: 4,
-          marginBottom: 16,
-          background: "var(--color-bg-card)",
-          border: "1px solid var(--color-border-light)",
-          borderRadius: "var(--radius-md)",
-        }}
-      >
-        {ACCOUNT_SEGMENTS.map((segment) => (
-          <button
-            key={segment.value}
-            type="button"
-            onClick={() => setSegment(segment.value)}
-            data-tooltip={segment.tooltip}
-            data-tooltip-side={segment.tooltipSide}
-            data-tooltip-align={segment.tooltipAlign}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 8,
-              border: "none",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 600,
-              background:
-                activeSegment === segment.value
-                  ? "var(--color-bg)"
-                  : "transparent",
-              color:
-                activeSegment === segment.value
-                  ? "var(--color-primary)"
-                  : "var(--color-text-secondary)",
-              boxShadow:
-                activeSegment === segment.value ? "var(--shadow-sm)" : "none",
-              transition: "all 0.2s ease",
-            }}
-          >
-            {segment.label}
-          </button>
-        ))}
-      </div>
-
-      <DeleteConfirmModal
-        open={Boolean(deleteConfirm)}
-        onClose={() => setDeleteConfirm(null)}
-        onConfirm={confirmDelete}
-        title="确认删除连接"
-        confirmText="确认删除"
-        loading={
+        showMobileTools={showMobileTools}
+        sortMode={sortMode}
+        showAdd={showAdd}
+        allVisibleAccountsSelected={allVisibleAccountsSelected}
+        selectedAccountCount={selectedAccountIds.length}
+        checkinAllLoading={!!actionLoading["checkin-all"]}
+        healthRefreshLoading={!!actionLoading["health-refresh"]}
+        batchActionLoading={batchActionLoading}
+        deleteConfirm={deleteConfirm}
+        deleteLoading={
           batchActionLoading ||
           (deleteConfirm?.mode === "single" &&
             !!actionLoading[`delete-${deleteConfirm?.accountId}`])
         }
-        description={
-          deleteConfirm?.mode === "single" ? (
-            <>
-              确定要删除连接{" "}
-              <strong>
-                {deleteConfirm.accountName || `#${deleteConfirm.accountId}`}
-              </strong>{" "}
-              吗？
-            </>
-          ) : (
-            <>
-              确定要删除选中的 <strong>{deleteConfirm?.count || 0}</strong>{" "}
-              个连接吗？
-            </>
+        onOpenMobileTools={() => setShowMobileTools(true)}
+        onCloseMobileTools={() => setShowMobileTools(false)}
+        onSortModeChange={setSortMode}
+        onToggleSelectAllVisibleAccounts={toggleSelectAllVisibleAccounts}
+        onCheckinAll={() =>
+          withLoading(
+            "checkin-all",
+            () => api.triggerCheckinAll(),
+            "已触发全部签到",
           )
         }
+        onRefreshRuntimeHealth={handleRefreshRuntimeHealth}
+        onToggleAdd={() => {
+          const nextOpen = !showAdd;
+          if (!nextOpen) {
+            closeAddPanel();
+            return;
+          }
+          setEditingAccount(null);
+          closeRebindPanel();
+          setShowAdd(true);
+          resetAddForms(activeAddCredentialMode);
+        }}
+        onSegmentChange={setSegment}
+        onBatchAction={runBatchAccountAction}
+        onCloseDeleteConfirm={() => setDeleteConfirm(null)}
+        onConfirmDelete={confirmDelete}
       />
-
-      {activeSegment !== "tokens" && selectedAccountIds.length > 0 && (
-        <ResponsiveBatchActionBar
-          isMobile={isMobile}
-          info={`已选 ${selectedAccountIds.length} 项`}
-          desktopStyle={{ marginBottom: 12 }}
-        >
-          <button
-            data-testid="accounts-batch-refresh-balance"
-            onClick={() => runBatchAccountAction("refreshBalance")}
-            disabled={batchActionLoading}
-            className="btn btn-ghost"
-            style={{ border: "1px solid var(--color-border)" }}
-          >
-            批量刷新余额
-          </button>
-          <button
-            onClick={() => runBatchAccountAction("enable")}
-            disabled={batchActionLoading}
-            className="btn btn-ghost"
-            style={{ border: "1px solid var(--color-border)" }}
-          >
-            批量启用
-          </button>
-          <button
-            onClick={() => runBatchAccountAction("disable")}
-            disabled={batchActionLoading}
-            className="btn btn-ghost"
-            style={{ border: "1px solid var(--color-border)" }}
-          >
-            批量禁用
-          </button>
-          <button
-            onClick={() => runBatchAccountAction("delete")}
-            disabled={batchActionLoading}
-            className="btn btn-link btn-link-danger"
-          >
-            批量删除
-          </button>
-        </ResponsiveBatchActionBar>
-      )}
 
       {activeSegment === "tokens" ? (
         <TokensPanel
@@ -2381,363 +2109,32 @@ export default function Accounts() {
           </CenteredModal>
 
           {activeSegment === "session" && (
-            <CenteredModal
-              open={Boolean(rebindTarget)}
+            <AccountRebindSessionModal
+              target={activeRebindTarget}
+              form={rebindForm}
+              verifyResult={rebindVerifyResult}
+              verifying={rebindVerifying}
+              saving={rebindSaving}
+              isSub2Api={isRebindSub2Api}
+              inputStyle={inputStyle}
+              onFormChange={setRebindForm}
+              onClearVerifyResult={() => setRebindVerifyResult(null)}
               onClose={closeRebindPanel}
-              title="重新绑定 Session Token"
-              maxWidth={820}
-              bodyStyle={{ display: "flex", flexDirection: "column", gap: 12 }}
-              footer={
-                <button onClick={closeRebindPanel} className="btn btn-ghost">
-                  取消
-                </button>
-              }
-            >
-              {activeRebindTarget ? (
-                <>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "var(--color-text-muted)",
-                      marginBottom: 12,
-                    }}
-                  >
-                    连接: {resolveAccountDisplayName(activeRebindTarget)} @{" "}
-                    {activeRebindTarget.site?.name || "-"}。请粘贴新的 Session
-                    Token，验证成功后再绑定。
-                  </div>
-
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "minmax(0, 1fr) 220px",
-                      gap: 10,
-                      marginBottom: 10,
-                    }}
-                  >
-                    <textarea
-                      placeholder="粘贴新的 Session Token"
-                      value={rebindForm.accessToken}
-                      onChange={(e) => {
-                        setRebindForm((prev) => ({
-                          ...prev,
-                          accessToken: e.target.value.trim(),
-                        }));
-                        setRebindVerifyResult(null);
-                      }}
-                      style={{
-                        ...inputStyle,
-                        fontFamily: "var(--font-mono)",
-                        height: 74,
-                        resize: "none" as const,
-                      }}
-                    />
-                    <input
-                      placeholder="用户 ID（可选）"
-                      value={rebindForm.platformUserId}
-                      onChange={(e) => {
-                        setRebindForm((prev) => ({
-                          ...prev,
-                          platformUserId: e.target.value.replace(/\D/g, ""),
-                        }));
-                        setRebindVerifyResult(null);
-                      }}
-                      style={inputStyle}
-                    />
-                  </div>
-                  {isRebindSub2Api && (
-                    <>
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "minmax(0, 1fr) 220px",
-                          gap: 10,
-                          marginBottom: 4,
-                        }}
-                      >
-                        <input
-                          placeholder="Sub2API refresh_token（可选）"
-                          value={rebindForm.refreshToken}
-                          onChange={(e) =>
-                            setRebindForm((prev) => ({
-                              ...prev,
-                              refreshToken: e.target.value.trim(),
-                            }))
-                          }
-                          style={{
-                            ...inputStyle,
-                            fontFamily: "var(--font-mono)",
-                          }}
-                        />
-                        <input
-                          placeholder="token_expires_at（可选）"
-                          value={rebindForm.tokenExpiresAt}
-                          onChange={(e) =>
-                            setRebindForm((prev) => ({
-                              ...prev,
-                              tokenExpiresAt: e.target.value.replace(/\D/g, ""),
-                            }))
-                          }
-                          style={inputStyle}
-                        />
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: "var(--color-text-muted)",
-                          marginBottom: 10,
-                        }}
-                      >
-                        留空将保持原有 refresh_token
-                        不变。配置后可用于托管自动续期。
-                      </div>
-                    </>
-                  )}
-
-                  {rebindVerifyResult &&
-                    rebindVerifyResult.success &&
-                    rebindVerifyResult.tokenType === "session" && (
-                      <div
-                        className="alert alert-success animate-scale-in"
-                        style={{ marginBottom: 10 }}
-                      >
-                        <div className="alert-title">Session Token 有效</div>
-                        <div style={{ fontSize: 12, marginTop: 4 }}>
-                          用户:{" "}
-                          {rebindVerifyResult.userInfo?.username || "未知"}
-                          {rebindVerifyResult.apiToken
-                            ? `，已识别 API Key (${String(rebindVerifyResult.apiToken).slice(0, 8)}...)`
-                            : ""}
-                        </div>
-                      </div>
-                    )}
-                  {rebindVerifyResult &&
-                    (!rebindVerifyResult.success ||
-                      rebindVerifyResult.tokenType !== "session") && (
-                      <div
-                        className="alert alert-error animate-scale-in"
-                        style={{ marginBottom: 10 }}
-                      >
-                        <div className="alert-title">
-                          {rebindVerifyResult.message ||
-                            "Token 无效或类型不正确"}
-                        </div>
-                      </div>
-                    )}
-
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      onClick={handleVerifyRebindToken}
-                      disabled={
-                        rebindVerifying || !rebindForm.accessToken.trim()
-                      }
-                      className="btn btn-ghost"
-                      style={{ border: "1px solid var(--color-border)" }}
-                    >
-                      {rebindVerifying ? (
-                        <>
-                          <span className="spinner spinner-sm" />
-                          验证中...
-                        </>
-                      ) : (
-                        "验证 Token"
-                      )}
-                    </button>
-                    <button
-                      onClick={handleSubmitRebind}
-                      disabled={
-                        rebindSaving ||
-                        !(
-                          rebindVerifyResult?.success &&
-                          rebindVerifyResult?.tokenType === "session"
-                        )
-                      }
-                      className="btn btn-success"
-                    >
-                      {rebindSaving ? (
-                        <>
-                          <span
-                            className="spinner spinner-sm"
-                            style={{
-                              borderTopColor: "white",
-                              borderColor: "rgba(255,255,255,0.3)",
-                            }}
-                          />
-                          绑定中...
-                        </>
-                      ) : (
-                        "确认重新绑定"
-                      )}
-                    </button>
-                  </div>
-                </>
-              ) : null}
-            </CenteredModal>
+              onVerify={handleVerifyRebindToken}
+              onSubmit={handleSubmitRebind}
+              resolveAccountDisplayName={resolveAccountDisplayName}
+            />
           )}
 
-          <CenteredModal
-            open={Boolean(editingAccount)}
+          <AccountEditModal
+            account={editingAccount}
+            form={editForm}
+            saving={savingEdit}
+            inputStyle={inputStyle}
+            onFormChange={setEditForm}
             onClose={closeEditPanel}
-            title="编辑账号"
-            maxWidth={860}
-            bodyStyle={{ display: "flex", flexDirection: "column", gap: 12 }}
-            footer={
-              <>
-                <button onClick={closeEditPanel} className="btn btn-ghost">
-                  取消
-                </button>
-                <button
-                  onClick={saveEditPanel}
-                  disabled={savingEdit}
-                  className="btn btn-primary"
-                >
-                  {savingEdit ? (
-                    <>
-                      <span
-                        className="spinner spinner-sm"
-                        style={{
-                          borderTopColor: "white",
-                          borderColor: "rgba(255,255,255,0.3)",
-                        }}
-                      />{" "}
-                      保存中...
-                    </>
-                  ) : (
-                    "保存修改"
-                  )}
-                </button>
-              </>
-            }
-          >
-            {editingAccount ? (
-              <ResponsiveFormGrid>
-                <input
-                  placeholder="账号名称"
-                  value={editForm.username}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      username: e.target.value,
-                    }))
-                  }
-                  style={inputStyle}
-                />
-                <ModernSelect
-                  value={editForm.status}
-                  onChange={(value) =>
-                    setEditForm((prev) => ({ ...prev, status: value }))
-                  }
-                  options={[
-                    { value: "active", label: "active" },
-                    { value: "disabled", label: "disabled" },
-                    { value: "expired", label: "expired" },
-                  ]}
-                  placeholder="状态"
-                />
-                <input
-                  placeholder="单位成本（可选）"
-                  value={editForm.unitCost}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      unitCost: e.target.value,
-                    }))
-                  }
-                  style={inputStyle}
-                />
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    ...inputStyle,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={editForm.checkinEnabled}
-                    onChange={(e) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        checkinEnabled: e.target.checked,
-                      }))
-                    }
-                  />
-                  启用签到
-                </label>
-                <input
-                  placeholder="Access Token"
-                  value={editForm.accessToken}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      accessToken: e.target.value,
-                    }))
-                  }
-                  style={{ ...inputStyle, fontFamily: "var(--font-mono)" }}
-                />
-                <input
-                  placeholder="API Token（可选）"
-                  value={editForm.apiToken}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      apiToken: e.target.value,
-                    }))
-                  }
-                  style={{ ...inputStyle, fontFamily: "var(--font-mono)" }}
-                />
-                <input
-                  placeholder="代理地址（可选，如 http://127.0.0.1:7890）"
-                  value={editForm.proxyUrl}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      proxyUrl: e.target.value,
-                    }))
-                  }
-                  style={inputStyle}
-                />
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "var(--color-text-muted)",
-                    marginTop: -4,
-                  }}
-                >
-                  覆盖站点和系统代理，留空则使用站点设置。支持 http/https/socks5
-                  协议。
-                </div>
-                {(editingAccount?.site?.platform || "").toLowerCase() ===
-                  "sub2api" && (
-                  <>
-                    <input
-                      placeholder="Sub2API refresh_token（可选）"
-                      value={editForm.refreshToken}
-                      onChange={(e) =>
-                        setEditForm((prev) => ({
-                          ...prev,
-                          refreshToken: e.target.value,
-                        }))
-                      }
-                      style={{ ...inputStyle, fontFamily: "var(--font-mono)" }}
-                    />
-                    <input
-                      placeholder="token_expires_at（可选）"
-                      value={editForm.tokenExpiresAt}
-                      onChange={(e) =>
-                        setEditForm((prev) => ({
-                          ...prev,
-                          tokenExpiresAt: e.target.value.replace(/\D/g, ""),
-                        }))
-                      }
-                      style={inputStyle}
-                    />
-                  </>
-                )}
-              </ResponsiveFormGrid>
-            ) : null}
-          </CenteredModal>
+            onSave={saveEditPanel}
+          />
 
           <div className="card">
             {visibleAccounts.length > 0 ? (
