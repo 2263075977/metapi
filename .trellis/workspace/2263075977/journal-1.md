@@ -471,3 +471,36 @@ Moved Accounts page chrome plus rebind and edit modals into accounts domain surf
 ### Next Steps
 
 - None - task complete
+
+
+## Session 15: Decompose Settings page surfaces
+
+**Date**: 2026-06-11
+**Task**: Decompose Settings page surfaces
+**Branch**: `main`
+
+### Summary
+
+Extracted system proxy, proxy failure rules, and downstream proxy token Settings panels into focused settings domain sections while keeping persistence and payload behavior in the route page; validated typecheck, repo drift check, diff check, and targeted Settings tests.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e4df7c5` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
