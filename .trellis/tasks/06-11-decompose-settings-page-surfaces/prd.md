@@ -24,14 +24,16 @@ local state into focused domain surfaces.
 
 ## Acceptance Criteria
 
-- [ ] `Settings.tsx` is reduced toward page orchestration rather than inline
+- [x] `Settings.tsx` is reduced toward page orchestration rather than inline
       section implementation.
-- [ ] Extracted setting sections keep stable props and local ownership.
-- [ ] Existing settings tests continue to pass.
-- [ ] No database schema, public API, or settings payload shape changes occur.
+- [x] Extracted setting sections keep stable props and local ownership.
+- [x] Existing settings tests continue to pass.
+- [x] No database schema, public API, or settings payload shape changes occur.
 
 ## Validation
 
 - `npm run typecheck`
+- `npm run repo:drift-check`
+- `npx vitest run --root . src/web/pages/settings.system-proxy.test.tsx src/web/pages/settings.downstream-modal.architecture.test.ts src/web/pages/settings.factory-reset-modal.architecture.test.ts src/web/pages/settings.route-selector-modal.architecture.test.ts`
 - `npx vitest run --root . "src/server/routes/api/settings.*.test.ts"` only if
   backend settings contracts are touched.

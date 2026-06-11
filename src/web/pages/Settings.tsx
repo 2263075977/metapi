@@ -6,8 +6,11 @@ import ChangeKeyModal from '../components/ChangeKeyModal.js';
 import { useAnimatedVisibility } from '../components/useAnimatedVisibility.js';
 import ModernSelect from '../components/ModernSelect.js';
 import ResponsiveFormGrid from '../components/ResponsiveFormGrid.js';
+import DownstreamProxyTokenSection from './settings/DownstreamProxyTokenSection.js';
 import FactoryResetModal from './settings/FactoryResetModal.js';
 import ModelAvailabilityProbeConfirmModal from './settings/ModelAvailabilityProbeConfirmModal.js';
+import ProxyFailureRulesSection from './settings/ProxyFailureRulesSection.js';
+import SystemProxySection from './settings/SystemProxySection.js';
 import {
   createCodexDefaultHighReasoningVisualPreset,
   createVisualPayloadRule,
@@ -1452,79 +1455,34 @@ export default function Settings() {
           </div>
         </div>
 
-        <div className="card animate-slide-up stagger-3" style={{ padding: 20 }}>
-          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>系统代理</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 12 }}>
-            配置一个全局出站代理地址，站点页可按站点决定是否启用系统代理。
-          </div>
-          <input
-            value={runtime.systemProxyUrl}
-            onChange={(e) => {
-              setRuntime((prev) => ({ ...prev, systemProxyUrl: e.target.value }));
-              setSystemProxyTestState(null);
-            }}
-            placeholder="系统代理 URL（可选，如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080）"
-            style={{ ...inputStyle, fontFamily: 'var(--font-mono)', marginBottom: 10 }}
-          />
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            <button onClick={saveSystemProxy} disabled={savingSystemProxy} className="btn btn-primary">
-              {savingSystemProxy ? <><span className="spinner spinner-sm" style={{ borderTopColor: 'white', borderColor: 'rgba(255,255,255,0.3)' }} /> 保存中...</> : '保存系统代理'}
-            </button>
-            <button
-              onClick={testSystemProxy}
-              disabled={testingSystemProxy}
-              className="btn btn-ghost"
-              style={{ border: '1px solid var(--color-border)' }}
-            >
-              {testingSystemProxy ? <><span className="spinner spinner-sm" /> 测试中...</> : '测试系统代理'}
-            </button>
-          </div>
-          {systemProxyTestState && (
-            <div
-              style={{
-                fontSize: 12,
-                marginTop: 10,
-                color: systemProxyTestState.kind === 'success'
-                  ? 'var(--color-success)'
-                  : 'var(--color-danger)',
-              }}
-            >
-              {systemProxyTestState.text}
-            </div>
-          )}
-        </div>
+        <SystemProxySection
+          value={runtime.systemProxyUrl}
+          inputStyle={inputStyle}
+          saving={savingSystemProxy}
+          testing={testingSystemProxy}
+          testState={systemProxyTestState}
+          onChange={(value) => {
+            setRuntime((prev) => ({ ...prev, systemProxyUrl: value }));
+            setSystemProxyTestState(null);
+          }}
+          onSave={saveSystemProxy}
+          onTest={testSystemProxy}
+        />
 
-        <div className="card animate-slide-up stagger-4" style={{ padding: 20 }}>
-          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>代理失败判定</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 12 }}>
-            命中任一关键词或空内容时判定失败，可触发重试。
-          </div>
-          <textarea
-            value={proxyErrorKeywordsText}
-            onChange={(e) => setProxyErrorKeywordsText(e.target.value)}
-            placeholder="一行一个关键词，或逗号分隔"
-            style={{
-              ...inputStyle,
-              fontFamily: 'var(--font-mono)',
-              minHeight: 96,
-              resize: 'vertical',
-              marginBottom: 12,
-            }}
-          />
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
-            <input
-              type="checkbox"
-              checked={runtime.proxyEmptyContentFailEnabled}
-              onChange={(e) => setRuntime((prev) => ({ ...prev, proxyEmptyContentFailEnabled: e.target.checked }))}
-            />
-            空内容（completion=0，即使 prompt 有 token 也算）判定失败
-          </label>
-          <div>
-            <button onClick={saveProxyFailureRules} disabled={savingProxyFailureRules} className="btn btn-primary">
-              {savingProxyFailureRules ? <><span className="spinner spinner-sm" style={{ borderTopColor: 'white', borderColor: 'rgba(255,255,255,0.3)' }} /> 保存中...</> : '保存失败规则'}
-            </button>
-          </div>
-        </div>
+        <ProxyFailureRulesSection
+          keywordsText={proxyErrorKeywordsText}
+          emptyContentFailEnabled={runtime.proxyEmptyContentFailEnabled}
+          inputStyle={inputStyle}
+          saving={savingProxyFailureRules}
+          onKeywordsChange={setProxyErrorKeywordsText}
+          onEmptyContentFailChange={(checked) =>
+            setRuntime((prev) => ({
+              ...prev,
+              proxyEmptyContentFailEnabled: checked,
+            }))
+          }
+          onSave={saveProxyFailureRules}
+        />
 
         <div className="card animate-slide-up stagger-4" style={settingsModernCardStyle} data-settings-card="payload-rules">
           <div style={settingsModernHeaderStyle}>
@@ -1944,98 +1902,21 @@ export default function Settings() {
           </div>
         </div>
 
-        <div className="card animate-slide-up stagger-4" style={{ padding: 20 }}>
-          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>下游访问令牌（PROXY_TOKEN）</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 12 }}>
-            用于下游站点或客户端访问本服务代理接口。前缀 sk- 固定不可修改，只需填写后缀。
-          </div>
-          <code style={{ display: 'block', padding: '10px 14px', background: 'var(--color-bg)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-light)', marginBottom: 10 }}>
-            当前：{runtime.proxyTokenMasked || '未设置'}
-          </code>
-          <div
-            style={{
-              display: 'flex',
-              gap: 10,
-              alignItems: 'stretch',
-              marginBottom: 10,
-              minWidth: 0,
-              flexWrap: 'wrap',
-            }}
-          >
-            <div
-              style={{
-                ...inputStyle,
-                flex: 1,
-                minWidth: 200,
-                marginBottom: 0,
-                padding: 0,
-                display: 'flex',
-                alignItems: 'center',
-                overflow: 'hidden',
-              }}
-            >
-              <span
-                style={{
-                  padding: '10px 12px',
-                  borderRight: '1px solid var(--color-border-light)',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 13,
-                  color: 'var(--color-text-secondary)',
-                  userSelect: 'none',
-                  background: 'color-mix(in srgb, var(--color-text-muted) 6%, transparent)',
-                }}
-              >
-                {PROXY_TOKEN_PREFIX}
-              </span>
-              <input
-                type="text"
-                value={proxyTokenSuffix}
-                onChange={(e) => setProxyTokenSuffix(normalizeProxyTokenSuffix(e.target.value))}
-                placeholder="请输入 sk- 后的令牌内容"
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  border: 'none',
-                  outline: 'none',
-                  background: 'transparent',
-                  color: 'var(--color-text-primary)',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 13,
-                  padding: '10px 12px',
-                }}
-              />
-            </div>
-            <button
-              type="button"
-              className="btn btn-soft-primary"
-              aria-label="随机生成访问令牌后缀"
-              title="生成高熵随机后缀（不会自动保存）"
-              style={{
-                flexShrink: 0,
-                padding: '10px 18px',
-                fontSize: 13,
-                gap: 8,
-                alignSelf: 'stretch',
-              }}
-              onClick={() => {
-                const full = generateDownstreamSkKey(PROXY_TOKEN_PREFIX);
-                setProxyTokenSuffix(full.slice(PROXY_TOKEN_PREFIX.length));
-              }}
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden>
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"
-                />
-              </svg>
-              随机生成
-            </button>
-          </div>
-          <button onClick={saveProxyToken} disabled={savingToken} className="btn btn-primary">
-            {savingToken ? <><span className="spinner spinner-sm" style={{ borderTopColor: 'white', borderColor: 'rgba(255,255,255,0.3)' }} /> 保存中...</> : '更新下游访问令牌'}
-          </button>
-        </div>
+        <DownstreamProxyTokenSection
+          prefix={PROXY_TOKEN_PREFIX}
+          currentMasked={runtime.proxyTokenMasked || ''}
+          suffix={proxyTokenSuffix}
+          inputStyle={inputStyle}
+          saving={savingToken}
+          onSuffixChange={(value) =>
+            setProxyTokenSuffix(normalizeProxyTokenSuffix(value))
+          }
+          onGenerate={() => {
+            const full = generateDownstreamSkKey(PROXY_TOKEN_PREFIX);
+            setProxyTokenSuffix(full.slice(PROXY_TOKEN_PREFIX.length));
+          }}
+          onSave={saveProxyToken}
+        />
 
         <div className="card animate-slide-up stagger-5" style={{ padding: 20 }}>
           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>路由策略</div>
