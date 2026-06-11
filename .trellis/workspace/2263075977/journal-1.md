@@ -603,3 +603,36 @@ Extracted stats proxy logs query, meta, and detail payload construction into src
 ### Next Steps
 
 - None - task complete
+
+
+## Session 19: Thin settings API route adapter
+
+**Date**: 2026-06-11
+**Task**: Thin settings API route adapter
+**Branch**: `main`
+
+### Summary
+
+Extracted settings database runtime/test/migrate payload handling into settingsDatabaseRuntimeService and moved settings event persistence into settingsEventService; kept settings routes as Fastify adapters; stabilized model availability probe test teardown by closing DB connections; verified all settings route tests plus server typecheck, repo drift check, and diff check.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5ee7548` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
