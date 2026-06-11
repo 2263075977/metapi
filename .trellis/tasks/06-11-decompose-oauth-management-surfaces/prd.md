@@ -23,12 +23,14 @@ session, modal, and panel surfaces into the existing OAuth page domain folder.
 
 ## Acceptance Criteria
 
-- [ ] `OAuthManagement.tsx` is primarily a page composer.
-- [ ] Extracted surfaces live under `src/web/pages/oauth/`.
-- [ ] OAuth management behavior and API contracts remain unchanged.
-- [ ] No route, schema, or auth/session behavior changes are included.
+- [x] `OAuthManagement.tsx` is primarily a page composer.
+- [x] Extracted surfaces live under `src/web/pages/oauth/`.
+- [x] OAuth management behavior and API contracts remain unchanged.
+- [x] No route, schema, or auth/session behavior changes are included.
 
 ## Validation
 
 - `npm run typecheck`
+- `npm run repo:drift-check`
+- `npx vitest run --root . src/web/pages/OAuthManagement.test.tsx src/web/pages/oauth.mobile-layout.test.tsx`
 - Existing OAuth route and web tests if touched by the extraction.

@@ -8,7 +8,6 @@ import {
   type DragEvent,
   type ReactNode,
 } from 'react';
-import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import CenteredModal from '../components/CenteredModal.js';
 import ResponsiveBatchActionBar from '../components/ResponsiveBatchActionBar.js';
@@ -16,9 +15,11 @@ import ResponsiveFilterPanel from '../components/ResponsiveFilterPanel.js';
 import { MobileCard, MobileField } from '../components/MobileCard.js';
 import ModernSelect from '../components/ModernSelect.js';
 import { useToast } from '../components/Toast.js';
-import { useAnimatedVisibility } from '../components/useAnimatedVisibility.js';
 import { useIsMobile } from '../components/useIsMobile.js';
 import OAuthModelsModal, { type OAuthModelItem } from './oauth/OAuthModelsModal.js';
+import OAuthRouteUnitModal from './oauth/OAuthRouteUnitModal.js';
+import OAuthSessionFeedbackCard from './oauth/OAuthSessionFeedbackCard.js';
+import OAuthSideDrawer from './oauth/OAuthSideDrawer.js';
 import {
   api,
   type OAuthConnectionInfo,
@@ -566,61 +567,6 @@ function QuotaWindowRow({
       </div>
     </div>
   );
-}
-
-function SideDrawer({
-  open,
-  onClose,
-  title,
-  children,
-}: {
-  open: boolean;
-  onClose: () => void;
-  title: ReactNode;
-  children: ReactNode;
-}) {
-  const presence = useAnimatedVisibility(open, 220);
-
-  useEffect(() => {
-    if (!open || typeof document === 'undefined') return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open]);
-
-  if (!presence.shouldRender) return null;
-
-  const panel = (
-    <div
-      className={`modal-backdrop oauth-drawer-backdrop ${presence.isVisible ? '' : 'is-closing'}`.trim()}
-      onClick={onClose}
-    >
-      <div
-        className={`modal-content oauth-drawer-content ${presence.isVisible ? '' : 'is-closing'}`.trim()}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="modal-header oauth-drawer-header">
-          <div className="modal-title">{title}</div>
-          <button
-            type="button"
-            className="modal-close-button oauth-drawer-close"
-            onClick={onClose}
-            aria-label="关闭 OAuth 抽屉"
-          >
-            ×
-          </button>
-        </div>
-        <div className="modal-body oauth-drawer-body">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-
-  const portalTarget = typeof document !== 'undefined' ? document.body : null;
-  return portalTarget ? createPortal(panel, portalTarget) : panel;
 }
 
 export default function OAuthManagement() {
@@ -2037,26 +1983,10 @@ export default function OAuthManagement() {
       </div>
 
       {sessionFeedback ? (
-        <div className={`card oauth-page-message oauth-page-message-${sessionFeedback.tone}`.trim()}>
-          <div className="oauth-page-message-head">
-            <div className="oauth-page-message-text">{sessionFeedback.message}</div>
-            <span className={`badge ${sessionFeedback.tone === 'success' ? 'badge-success' : sessionFeedback.tone === 'error' ? 'badge-danger' : 'badge-info'}`}>
-              {sessionFeedback.tone === 'success' ? '成功' : sessionFeedback.tone === 'error' ? '失败' : '提示'}
-            </span>
-          </div>
-          {sessionFeedback.routeUnit ? (
-            <div className="oauth-page-message-meta">
-              <span className="badge badge-info">{sessionFeedback.routeUnit.name}</span>
-              <span className="badge badge-muted">{sessionFeedback.routeUnit.memberCount} 个成员</span>
-              <span className="badge badge-muted">{resolveRouteUnitStrategyLabel(sessionFeedback.routeUnit.strategy)}</span>
-              <div className="oauth-page-message-detail">
-                {sessionFeedback.routeUnit.action === 'created'
-                  ? '已将选中的 OAuth 账号合并为一个路由池，后续会以单个路由单元参与路由。'
-                  : '该路由池已拆分回单体账号，后续会分别参与路由。'}
-              </div>
-            </div>
-          ) : null}
-        </div>
+        <OAuthSessionFeedbackCard
+          feedback={sessionFeedback}
+          resolveRouteUnitStrategyLabel={resolveRouteUnitStrategyLabel}
+        />
       ) : null}
 
       <ResponsiveFilterPanel
@@ -2156,7 +2086,7 @@ export default function OAuthManagement() {
         )}
       </div>
 
-      <SideDrawer
+      <OAuthSideDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         title={drawerIntent.mode === 'create'
@@ -2377,7 +2307,7 @@ export default function OAuthManagement() {
             </div>
           ) : null}
         </div>
-      </SideDrawer>
+      </OAuthSideDrawer>
 
       <OAuthModelsModal
         open={modelsModal.open}
@@ -2547,55 +2477,23 @@ export default function OAuthManagement() {
         ) : null}
       </CenteredModal>
 
-      <CenteredModal
+      <OAuthRouteUnitModal
         open={routeUnitModal.open}
+        name={routeUnitModal.name}
+        strategy={routeUnitModal.strategy}
+        creating={actionLoadingKey === 'route-unit:create'}
+        canCreate={!!asTrimmedString(routeUnitModal.name)}
         onClose={closeRouteUnitModal}
-        title="创建路由池"
-        maxWidth={520}
-        bodyStyle={{ display: 'grid', gap: 16 }}
-        footer={(
-          <>
-            <button type="button" className="btn btn-ghost" onClick={closeRouteUnitModal}>
-              取消
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleCreateRouteUnit}
-              disabled={actionLoadingKey === 'route-unit:create' || !asTrimmedString(routeUnitModal.name)}
-            >
-              {actionLoadingKey === 'route-unit:create' ? '创建中...' : '创建路由池'}
-            </button>
-          </>
-        )}
-      >
-        <div className="oauth-form-field">
-          <div className="oauth-field-label">路由池名称</div>
-          <input
-            type="text"
-            className="oauth-input"
-            data-testid="oauth-route-unit-name"
-            value={routeUnitModal.name}
-            onChange={(event) => setRouteUnitModal((current) => ({ ...current, name: event.target.value }))}
-            placeholder="例如 Codex Pool"
-          />
-        </div>
-        <div className="oauth-form-field">
-          <div className="oauth-field-label">策略</div>
-          <ModernSelect
-            value={routeUnitModal.strategy}
-            onChange={(value) => setRouteUnitModal((current) => ({
-              ...current,
-              strategy: String(value || 'round_robin') as OAuthRouteUnitStrategy,
-            }))}
-            options={[
-              { value: 'round_robin', label: '轮询' },
-              { value: 'stick_until_unavailable', label: '单个用到不可用再切' },
-            ]}
-            placeholder="选择路由池策略"
-          />
-        </div>
-      </CenteredModal>
+        onCreate={handleCreateRouteUnit}
+        onNameChange={(value) => setRouteUnitModal((current) => ({
+          ...current,
+          name: value,
+        }))}
+        onStrategyChange={(strategy) => setRouteUnitModal((current) => ({
+          ...current,
+          strategy,
+        }))}
+      />
     </div>
   );
 }
