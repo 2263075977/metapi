@@ -14,7 +14,7 @@
 |------|----------|----------|
 | 云服务器 / NAS / 家用主机长期运行 | Docker / Docker Compose | Docker 与 Docker Compose |
 | 免费云部署（24h 在线） | Render + TiDB + UptimeRobot | 注册 Render / TiDB Cloud / UptimeRobot 免费账号，详见 [Render 部署指南](./deployment.md#render-一键部署免费-24h-运行) |
-| 二次开发 / 调试 | 本地开发 | Node.js 20+ 与 npm |
+| 二次开发 / 调试 | 本地开发 | Node.js 25+ 与 npm |
 
 > [!NOTE]
 > - 当前不再提供桌面安装包或 `Release` 压缩包 + Node.js 运行时的独立部署路径。

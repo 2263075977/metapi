@@ -27,12 +27,12 @@ actual runtime and package configuration.
 
 ## Acceptance Criteria
 
-- [ ] README and README_EN badges no longer mention Node.js `22.15+` or
+- [x] README and README_EN badges no longer mention Node.js `22.15+` or
       TypeScript `5.x`.
-- [ ] CONTRIBUTING and getting-started docs no longer advertise Node.js `20+`
+- [x] CONTRIBUTING and getting-started docs no longer advertise Node.js `20+`
       as the development baseline.
-- [ ] Docker docs or comments still explain why Docker uses Node 22.
-- [ ] No package or lockfile changes are made unless the user explicitly asks
+- [x] Docker docs or comments still explain why Docker uses Node 22.
+- [x] No package or lockfile changes are made unless the user explicitly asks
       for a runtime upgrade/downgrade.
 
 ## Validation
