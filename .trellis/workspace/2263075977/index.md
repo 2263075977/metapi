@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 17
+- **Total Sessions**: 18
 - **Last Active**: 2026-06-11
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~572 | Active |
+| `journal-1.md` | ~605 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 18 | 2026-06-11 | Thin stats API route adapter | `58dba4f` | `main` |
 | 17 | 2026-06-11 | Split web API facade by domain | `7bf9324` | `main` |
 | 16 | 2026-06-11 | Decompose OAuth management surfaces | `407e462` | `main` |
 | 15 | 2026-06-11 | Decompose Settings page surfaces | `e4df7c5` | `main` |

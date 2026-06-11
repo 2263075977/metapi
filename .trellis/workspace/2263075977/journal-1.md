@@ -570,3 +570,36 @@ Split shared web API request infrastructure into src/web/api/client.ts and proxy
 ### Next Steps
 
 - None - task complete
+
+
+## Session 18: Thin stats API route adapter
+
+**Date**: 2026-06-11
+**Task**: Thin stats API route adapter
+**Branch**: `main`
+
+### Summary
+
+Extracted stats proxy logs query, meta, and detail payload construction into src/server/services/statsProxyLogsService.ts; kept stats routes as Fastify adapters; fixed snapshot v2 teardown by closing DB connections; verified all stats route tests plus server typecheck, repo drift check, and diff check.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `58dba4f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
