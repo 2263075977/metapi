@@ -18,6 +18,7 @@ import { buildUpstreamUrl } from './upstreamUrl.js';
 import { detectDownstreamClientContext, type DownstreamClientContext } from '../../proxy-core/downstreamClientContext.js';
 import { insertProxyLog } from '../../services/proxyLogStore.js';
 import { fetchWithObservedFirstByte, getObservedResponseMeta } from '../../proxy-core/firstByteTimeout.js';
+import { readRuntimeResponseText } from '../../proxy-core/executors/types.js';
 import { getProxyMaxChannelRetries } from '../../services/proxyChannelRetry.js';
 import { runWithSiteApiEndpointPool, SiteApiEndpointRequestError } from '../../services/siteApiEndpointService.js';
 import {
@@ -96,7 +97,7 @@ export async function embeddingsProxyRoute(app: FastifyInstance) {
           const status = response.status;
           let responseText = '';
           try {
-            responseText = await response.text();
+            responseText = await readRuntimeResponseText(response);
           } catch (error) {
             if (!response.ok) {
               throw new SiteApiEndpointRequestError('unknown error', {

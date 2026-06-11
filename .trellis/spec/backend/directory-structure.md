@@ -55,6 +55,9 @@ src/
   context, and delegate to proxy-core or services.
 - Shared proxy orchestration helpers belong under `src/server/proxy-core/**`
   or another neutral non-route module.
+- Whole-body upstream response reads in proxy routes and proxy-core surfaces
+  should use `readRuntimeResponseText()` instead of direct `Response.text()`
+  calls, so runtime executor and compression handling stay consistent.
 - `src/server/proxy-core/**` must not import from `src/server/routes/proxy/**`.
 - `src/server/services/**` must not import from `src/server/routes/proxy/**`.
 - Any temporary exception must be explicit in an architecture test and tied to a
@@ -67,6 +70,8 @@ src/
   temporary tracked boundary debt.
 - A helper under `routes/proxy/**` gains a second non-route caller -> move it to
   proxy-core or a neutral module before adding the caller.
+- Direct `.text()` reads in non-test `routes/proxy/**` or
+  `proxy-core/surfaces/**` -> reject; use `readRuntimeResponseText()`.
 
 #### 5. Good/Base/Bad Cases
 - Good: `routes/proxy/chat.ts` delegates to
@@ -83,6 +88,7 @@ src/
   next to that route.
 - Bad: `proxy-core/surfaces/chatSurface.ts` importing
   `../../routes/proxy/downstreamPolicy.js`.
+- Bad: a route proxy reading an upstream body with `await upstream.text()`.
 
 #### 6. Tests Required
 - Extend `src/server/routes/proxy/architecture-boundaries.test.ts` when adding
@@ -111,6 +117,16 @@ Correct:
 ```typescript
 // services can keep a stable re-export seam, but it must point to proxy-core.
 export { dispatchRuntimeRequest } from '../proxy-core/runtime/runtimeDispatch.js';
+```
+
+Wrong:
+```typescript
+const rawText = await upstream.text();
+```
+
+Correct:
+```typescript
+const rawText = await readRuntimeResponseText(upstream);
 ```
 
 ---

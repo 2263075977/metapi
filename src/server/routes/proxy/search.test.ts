@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import { zstdCompressSync } from 'node:zlib';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fetchMock = vi.fn();
@@ -187,6 +188,36 @@ describe('/v1/search route', () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(selectNextChannelMock).not.toHaveBeenCalled();
+  });
+
+  it('decodes zstd-compressed search responses before parsing JSON', async () => {
+    fetchMock.mockResolvedValue(new Response(zstdCompressSync(Buffer.from(JSON.stringify({
+      object: 'search.result',
+      data: [{ title: 'Compressed AxonHub' }],
+    }))), {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+        'content-encoding': 'zstd',
+      },
+    }));
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/search',
+      headers: {
+        authorization: 'Bearer sk-demo',
+      },
+      payload: {
+        query: 'axonhub',
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      object: 'search.result',
+      data: [{ title: 'Compressed AxonHub' }],
+    });
   });
 
   it('rejects max_results outside the allowed range', async () => {

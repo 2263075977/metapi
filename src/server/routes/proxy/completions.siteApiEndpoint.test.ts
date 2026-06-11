@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { zstdCompressSync } from 'node:zlib';
 import { asc, eq } from 'drizzle-orm';
 
 const fetchMock = vi.fn();
@@ -169,7 +170,10 @@ describe('/v1/completions site api endpoint rotation', () => {
     selectNextChannelMock.mockResolvedValue(null);
 
     fetchMock
-      .mockResolvedValueOnce(new Response('bad gateway', { status: 502 }))
+      .mockResolvedValueOnce(new Response(zstdCompressSync(Buffer.from('bad gateway')), {
+        status: 502,
+        headers: { 'content-encoding': 'zstd' },
+      }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
         id: 'cmpl-ok',
         object: 'text_completion',

@@ -19,6 +19,7 @@ import { buildUpstreamUrl } from './upstreamUrl.js';
 import { detectDownstreamClientContext, type DownstreamClientContext } from '../../proxy-core/downstreamClientContext.js';
 import { insertProxyLog } from '../../services/proxyLogStore.js';
 import { fetchWithObservedFirstByte, getObservedResponseMeta } from '../../proxy-core/firstByteTimeout.js';
+import { readRuntimeResponseText } from '../../proxy-core/executors/types.js';
 import { getProxyMaxChannelRetries } from '../../services/proxyChannelRetry.js';
 import { runWithSiteApiEndpointPool, SiteApiEndpointRequestError } from '../../services/siteApiEndpointService.js';
 import {
@@ -100,7 +101,7 @@ export async function completionsProxyRoute(app: FastifyInstance) {
           );
           const observedFirstByteLatencyMs = getObservedResponseMeta(response)?.firstByteLatencyMs ?? null;
           if (!response.ok) {
-            const errText = await response.text().catch(() => 'unknown error');
+            const errText = (await readRuntimeResponseText(response).catch(() => '')) || 'unknown error';
             throw new SiteApiEndpointRequestError(errText || 'unknown error', {
               status: response.status,
               rawErrText: errText || null,
@@ -215,7 +216,7 @@ export async function completionsProxyRoute(app: FastifyInstance) {
           return;
         }
 
-        const rawText = await upstream.text();
+        const rawText = await readRuntimeResponseText(upstream);
         let data: any = rawText;
         try {
           data = JSON.parse(rawText);

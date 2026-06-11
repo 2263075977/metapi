@@ -18,6 +18,7 @@ import {
   saveProxyVideoTask,
 } from '../../services/proxyVideoTaskStore.js';
 import { getProxyMaxChannelRetries } from '../../services/proxyChannelRetry.js';
+import { readRuntimeResponseText } from '../../proxy-core/executors/types.js';
 import {
   buildForcedChannelUnavailableMessage,
   canRetryChannelSelection,
@@ -111,7 +112,7 @@ export async function videosProxyRoute(app: FastifyInstance) {
               }),
             }, accountProxy);
           const response = await fetch(targetUrl, requestInit);
-          const responseText = await response.text();
+          const responseText = await readRuntimeResponseText(response);
           if (!response.ok) {
             throw new SiteApiEndpointRequestError(responseText || 'unknown error', {
               status: response.status,
@@ -214,7 +215,7 @@ export async function videosProxyRoute(app: FastifyInstance) {
       }
       throw error;
     }
-    const text = await upstream.text();
+    const text = await readRuntimeResponseText(upstream);
     try {
       const data = JSON.parse(text);
       await refreshProxyVideoTaskSnapshot(mapping.publicId, {
@@ -252,7 +253,7 @@ export async function videosProxyRoute(app: FastifyInstance) {
       return reply.code(upstream.status).send();
     }
 
-    const text = await upstream.text();
+    const text = await readRuntimeResponseText(upstream);
     return reply.code(upstream.status).send({
       error: { message: text || 'Upstream delete failed', type: 'upstream_error' },
     });
@@ -272,7 +273,7 @@ async function requestMappedVideoTaskUpstream(
       },
     }));
     if (!upstream.ok) {
-      const errorText = await upstream.clone().text().catch(() => '');
+      const errorText = await readRuntimeResponseText(upstream.clone()).catch(() => '');
       if (shouldRetryProxyRequest(upstream.status, errorText || `HTTP ${upstream.status}`)) {
         throw new SiteApiEndpointRequestError(errorText || `HTTP ${upstream.status}`, {
           status: upstream.status,

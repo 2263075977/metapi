@@ -18,6 +18,7 @@ describe('repo drift check', () => {
     writeWorkspaceFiles(root, {
       'src/server/transformers/openai/responses/routeCompatibility.ts': "import type { EndpointAttemptContext } from '../../../routes/proxy/endpointFlow.js';\n",
       'src/server/proxy-core/surfaces/chatSurface.ts': 'const payload = await upstream.text();\n',
+      'src/server/routes/proxy/completions.ts': 'const raw = await upstream.text();\n',
       'src/server/proxy-core/surfaces/sharedSurface.ts': "import { dispatchRuntimeRequest } from '../../routes/proxy/runtimeExecutor.js';\n",
       'src/web/pages/Accounts.tsx': "import { TokensPanel } from './Tokens.js';\n",
       'src/web/pages/Tokens.tsx': 'export const TokensPanel = () => null;\n',
@@ -29,6 +30,10 @@ describe('repo drift check', () => {
       expect.objectContaining({
         ruleId: 'proxy-surface-body-read',
         file: 'src/server/proxy-core/surfaces/chatSurface.ts',
+      }),
+      expect.objectContaining({
+        ruleId: 'proxy-route-body-read',
+        file: 'src/server/routes/proxy/completions.ts',
       }),
       expect.objectContaining({
         ruleId: 'transformers-route-blind',

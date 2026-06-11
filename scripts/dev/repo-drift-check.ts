@@ -101,6 +101,11 @@ function isTopLevelPageFile(file: string): boolean {
     && isNonTestSource(file);
 }
 
+function isRouteProxySourceFile(file: string): boolean {
+  return /^src\/server\/routes\/proxy\/[^/]+\.(ts|js)$/.test(file)
+    && isNonTestSource(file);
+}
+
 function createRules(): RuleSpec[] {
   return [
     {
@@ -118,6 +123,13 @@ function createRules(): RuleSpec[] {
         && isNonTestSource(file),
       lineMatch: (line) => /\.text\(/.test(line),
       message: 'proxy-core surface reads a full upstream body via .text()',
+    },
+    {
+      id: 'proxy-route-body-read',
+      description: 'Proxy routes should use readRuntimeResponseText() for whole-body upstream reads',
+      fileFilter: (file) => isRouteProxySourceFile(file),
+      lineMatch: (line) => /\.text\(/.test(line),
+      message: 'proxy route reads a full upstream body via .text()',
     },
     {
       id: 'proxy-core-routes-proxy-import',
