@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 13
+- **Total Sessions**: 14
 - **Last Active**: 2026-06-11
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~440 | Active |
+| `journal-1.md` | ~473 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 14 | 2026-06-11 | Decompose Accounts page surfaces | `64472a6` | `main` |
 | 13 | 2026-06-11 | Align runtime docs and config claims | `9a2a6e1` | `main` |
 | 12 | 2026-06-11 | Create follow-up optimization task tree | `6ad9db5` | `main` |
 | 11 | 2026-06-11 | Converge proxy route body reads | `58b592f` | `main` |

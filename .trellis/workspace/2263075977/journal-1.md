@@ -438,3 +438,36 @@ Aligned README, contributor, and getting-started Node.js/TypeScript claims with 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 14: Decompose Accounts page surfaces
+
+**Date**: 2026-06-11
+**Task**: Decompose Accounts page surfaces
+**Branch**: `main`
+
+### Summary
+
+Moved Accounts page chrome plus rebind and edit modals into accounts domain surfaces while preserving route state, handlers, and behavior; verified with full typecheck and repo drift check.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `64472a6` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
