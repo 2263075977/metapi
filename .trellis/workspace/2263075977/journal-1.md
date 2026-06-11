@@ -339,3 +339,36 @@ Extracted ProxyLogs header, filters, invalid time alert, and pagination into a p
 ### Next Steps
 
 - None - task complete
+
+
+## Session 11: Converge proxy route body reads
+
+**Date**: 2026-06-11
+**Task**: Converge proxy route body reads
+**Branch**: `main`
+
+### Summary
+
+Replaced legacy proxy route whole-body upstream Response.text() reads with readRuntimeResponseText(), added a repo drift guard for route proxy body reads, covered compressed response handling in route tests, and recorded the backend boundary convention.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `58b592f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
