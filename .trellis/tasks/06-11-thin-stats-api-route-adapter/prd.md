@@ -26,14 +26,22 @@ file becomes a thinner Fastify adapter.
 
 ## Acceptance Criteria
 
-- [ ] `stats.ts` no longer owns large business/query construction blocks.
-- [ ] New service code follows existing `src/server/services/` naming and test
+- [x] `stats.ts` no longer owns large business/query construction blocks.
+- [x] New service code follows existing `src/server/services/` naming and test
       patterns.
-- [ ] All existing `stats.*.test.ts` suites continue to pass.
-- [ ] `npm run repo:drift-check` remains clean.
+- [x] All existing `stats.*.test.ts` suites continue to pass.
+- [x] `npm run repo:drift-check` remains clean.
 
 ## Validation
 
-- `npx vitest run --root . "src/server/routes/api/stats.*.test.ts"`
-- `npm run typecheck:server`
-- `npm run repo:drift-check`
+- Passed `npx vitest run --root . src/server/routes/api/stats.proxy-logs.test.ts`
+- Passed `npx vitest run --root . src/server/routes/api/stats.siteStatus.test.ts`
+- Passed `npx vitest run --root . src/server/routes/api/stats.token-candidates.test.ts`
+- Passed `npx vitest run --root . src/server/routes/api/stats.marketplace.test.ts`
+- Passed `npx vitest run --root . src/server/routes/api/stats.model-probe.test.ts`
+- Passed `npx vitest run --root . src/server/routes/api/stats.proxy-debug.test.ts`
+- Passed `npx vitest run --root . src/server/routes/api/stats.todayRewardFallback.test.ts`
+- Passed `npx vitest run --root . src/server/routes/api/stats.snapshot-v2.test.ts`
+- Passed `npm run typecheck:server`
+- Passed `npm run repo:drift-check`
+- Passed `git diff --check`
