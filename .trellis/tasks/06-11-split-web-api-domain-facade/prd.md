@@ -26,10 +26,10 @@ exports for callers.
 
 ## Acceptance Criteria
 
-- [ ] Domain-specific API code is moved out of the monolithic facade.
-- [ ] Existing imports from `src/web/api.ts` continue to compile.
-- [ ] `src/web/api.test.ts` continues to pass.
-- [ ] No public HTTP API or response contract changes are made.
+- [x] Domain-specific API code is moved out of the monolithic facade.
+- [x] Existing imports from `src/web/api.ts` continue to compile.
+- [x] `src/web/api.test.ts` continues to pass.
+- [x] No public HTTP API or response contract changes are made.
 
 ## Validation
 
