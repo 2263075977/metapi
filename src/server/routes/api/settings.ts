@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import cron from 'node-cron';
 import { fetch } from 'undici';
 import { config, normalizeTokenRouterFailureCooldownMaxSec } from '../../config.js';
-import { db, runtimeDbDialect, schema } from '../../db/index.js';
+import { db, schema } from '../../db/index.js';
 import { upsertSetting } from '../../db/upsertSetting.js';
 import * as routeRefreshWorkflow from '../../services/routeRefreshWorkflow.js';
 import { getAllBrandNames } from '../../services/brandMatcher.js';
@@ -20,21 +20,13 @@ import {
 } from '../../services/backupService.js';
 import { startBackgroundTask } from '../../services/backgroundTaskService.js';
 import {
-  maskConnectionString,
-  migrateCurrentDatabase,
-  normalizeMigrationInput,
-  testDatabaseConnection,
-  type MigrationDialect,
-} from '../../services/databaseMigrationService.js';
-import {
   parseSystemProxyTestPayload,
-  parseDatabaseMigrationPayload,
   parseBackupImportPayload,
   parseRuntimeSettingsPayload,
   parseBackupWebdavConfigPayload,
   parseBackupWebdavExportPayload,
 } from '../../contracts/settingsRoutePayloads.js';
-import { formatUtcSqlDateTime, getResolvedTimeZone } from '../../services/localTimeService.js';
+import { getResolvedTimeZone } from '../../services/localTimeService.js';
 import { extractClientIp, findInvalidIpAllowlistEntries, isIpAllowed } from '../../middleware/auth.js';
 import { invalidateSiteProxyCache, normalizeSiteProxyUrl, withExplicitProxyRequestInit } from '../../services/siteProxy.js';
 import { performFactoryReset } from '../../services/factoryResetService.js';
@@ -45,6 +37,13 @@ import {
   stopModelAvailabilityProbeScheduler,
 } from '../../services/modelAvailabilityProbeService.js';
 import { parsePayloadRulesConfigInput } from '../../services/payloadRules.js';
+import {
+  loadRuntimeDatabasePayload,
+  migrateRuntimeDatabasePayload,
+  saveRuntimeDatabasePayload,
+  testRuntimeDatabaseConnectionPayload,
+} from '../../services/settingsDatabaseRuntimeService.js';
+import { appendSettingsEvent } from '../../services/settingsEventService.js';
 
 type RoutingWeights = typeof config.routingWeights;
 
@@ -107,13 +106,6 @@ interface RuntimeSettingsBody {
   globalAllowedModels?: string[];
 }
 
-interface DatabaseMigrationBody {
-  dialect?: unknown;
-  connectionString?: unknown;
-  overwrite?: unknown;
-  ssl?: unknown;
-}
-
 interface SystemProxyTestBody {
   proxyUrl?: unknown;
 }
@@ -129,16 +121,7 @@ interface BackupWebdavConfigBody {
   autoSyncCron?: unknown;
 }
 
-type RuntimeDatabaseConfig = {
-  dialect: MigrationDialect;
-  connectionString: string;
-  ssl: boolean;
-};
-
 const PROXY_TOKEN_PREFIX = 'sk-';
-const DB_TYPE_SETTING_KEY = 'db_type';
-const DB_URL_SETTING_KEY = 'db_url';
-const DB_SSL_SETTING_KEY = 'db_ssl';
 const SYSTEM_PROXY_TEST_PROBE_URL = 'https://www.gstatic.com/generate_204';
 const SYSTEM_PROXY_TEST_TIMEOUT_MS = 15_000;
 
@@ -153,25 +136,6 @@ function maskSecret(value: string): string {
 }
 
 
-
-async function appendSettingsEvent(input: {
-  type: 'checkin' | 'balance' | 'proxy' | 'status' | 'token';
-  title: string;
-  message: string;
-  level?: 'info' | 'warning' | 'error';
-}) {
-  try {
-    const createdAt = formatUtcSqlDateTime(new Date());
-    await db.insert(schema.events).values({
-      type: input.type,
-      title: input.title,
-      message: input.message,
-      level: input.level || 'info',
-      relatedType: 'settings',
-      createdAt,
-    }).run();
-  } catch { }
-}
 
 function toPositiveNumberOrFallback(value: unknown, fallback: number) {
   const n = Number(value);
@@ -771,74 +735,6 @@ function getRuntimeSettingsResponse(currentAdminIp = '') {
     proxyTokenMasked: maskSecret(config.proxyToken),
     globalBlockedBrands: config.globalBlockedBrands,
     globalAllowedModels: config.globalAllowedModels,
-  };
-}
-
-function parseJsonValue(raw: unknown): unknown {
-  if (typeof raw !== 'string' || !raw) return undefined;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return undefined;
-  }
-}
-
-function maskRuntimeConnection(dialect: MigrationDialect, connectionString: string): string {
-  const normalized = connectionString.trim();
-  if (dialect === 'sqlite' && !normalized) return '(default sqlite path)';
-  return maskConnectionString(normalized);
-}
-
-async function loadSavedRuntimeDatabaseConfig(): Promise<RuntimeDatabaseConfig | null> {
-  const settingsRows = await db.select().from(schema.settings).all();
-  const map = new Map(settingsRows.map((row) => [row.key, row.value]));
-  const rawDialect = parseJsonValue(map.get(DB_TYPE_SETTING_KEY));
-  const rawConnection = parseJsonValue(map.get(DB_URL_SETTING_KEY));
-  const rawSsl = parseJsonValue(map.get(DB_SSL_SETTING_KEY));
-  if (typeof rawDialect !== 'string' || typeof rawConnection !== 'string') {
-    return null;
-  }
-
-  try {
-    const normalized = normalizeMigrationInput({
-      dialect: rawDialect,
-      connectionString: rawConnection,
-      ssl: rawSsl,
-    });
-    return {
-      dialect: normalized.dialect,
-      connectionString: normalized.connectionString,
-      ssl: normalized.ssl,
-    };
-  } catch {
-    return null;
-  }
-}
-
-function buildRuntimeDatabaseState(saved: RuntimeDatabaseConfig | null) {
-  const activeDialect = runtimeDbDialect;
-  const activeConnection = (config.dbUrl || '').trim();
-  const activeSsl = config.dbSsl;
-  const restartRequired = !!saved && (
-    saved.dialect !== activeDialect ||
-    saved.connectionString.trim() !== activeConnection ||
-    saved.ssl !== activeSsl
-  );
-
-  return {
-    active: {
-      dialect: activeDialect,
-      connection: maskRuntimeConnection(activeDialect, activeConnection),
-      ssl: activeSsl,
-    },
-    saved: saved
-      ? {
-        dialect: saved.dialect,
-        connection: maskRuntimeConnection(saved.dialect, saved.connectionString),
-        ssl: saved.ssl,
-      }
-      : null,
-    restartRequired,
   };
 }
 
@@ -1749,45 +1645,12 @@ export async function settingsRoutes(app: FastifyInstance) {
   });
 
   app.get('/api/settings/database/runtime', async () => {
-    const saved = await loadSavedRuntimeDatabaseConfig();
-    return {
-      success: true,
-      ...buildRuntimeDatabaseState(saved),
-    };
+    return loadRuntimeDatabasePayload();
   });
 
   app.put<{ Body: unknown }>('/api/settings/database/runtime', async (request, reply) => {
     try {
-      const parsedBody = parseDatabaseMigrationPayload(request.body);
-      if (!parsedBody.success) {
-        return reply.code(400).send({
-          success: false,
-          message: parsedBody.error,
-        });
-      }
-
-      const normalized = normalizeMigrationInput(parsedBody.data);
-      await upsertSetting(DB_TYPE_SETTING_KEY, normalized.dialect);
-      await upsertSetting(DB_URL_SETTING_KEY, normalized.connectionString);
-      await upsertSetting(DB_SSL_SETTING_KEY, normalized.ssl);
-
-      await appendSettingsEvent({
-        type: 'status',
-        title: '数据库运行配置已更新',
-        message: `已保存运行数据库配置：${normalized.dialect}${normalized.ssl ? ' (SSL)' : ''}（重启后生效）`,
-      });
-
-      const saved: RuntimeDatabaseConfig = {
-        dialect: normalized.dialect,
-        connectionString: normalized.connectionString,
-        ssl: normalized.ssl,
-      };
-
-      return {
-        success: true,
-        message: '数据库运行配置已保存，重启容器后生效',
-        ...buildRuntimeDatabaseState(saved),
-      };
+      return await saveRuntimeDatabasePayload(request.body);
     } catch (err: any) {
       return reply.code(400).send({
         success: false,
@@ -1798,20 +1661,7 @@ export async function settingsRoutes(app: FastifyInstance) {
 
   app.post<{ Body: unknown }>('/api/settings/database/test-connection', async (request, reply) => {
     try {
-      const parsedBody = parseDatabaseMigrationPayload(request.body);
-      if (!parsedBody.success) {
-        return reply.code(400).send({
-          success: false,
-          message: parsedBody.error,
-        });
-      }
-
-      const result = await testDatabaseConnection(parsedBody.data);
-      return {
-        success: true,
-        message: '目标数据库连接成功',
-        ...result,
-      };
+      return await testRuntimeDatabaseConnectionPayload(request.body);
     } catch (err: any) {
       return reply.code(400).send({
         success: false,
@@ -1822,25 +1672,7 @@ export async function settingsRoutes(app: FastifyInstance) {
 
   app.post<{ Body: unknown }>('/api/settings/database/migrate', async (request, reply) => {
     try {
-      const parsedBody = parseDatabaseMigrationPayload(request.body);
-      if (!parsedBody.success) {
-        return reply.code(400).send({
-          success: false,
-          message: parsedBody.error,
-        });
-      }
-
-      const result = await migrateCurrentDatabase(parsedBody.data);
-      appendSettingsEvent({
-        type: 'status',
-        title: '数据库迁移已完成',
-        message: `目标 ${result.dialect}，已迁移站点 ${result.rows.sites}、账号 ${result.rows.accounts}、令牌 ${result.rows.accountTokens}、路由 ${result.rows.tokenRoutes}、通道 ${result.rows.routeChannels}、设置 ${result.rows.settings}`,
-      });
-      return {
-        success: true,
-        message: '数据库迁移完成',
-        ...result,
-      };
+      return await migrateRuntimeDatabasePayload(request.body);
     } catch (err: any) {
       return reply.code(400).send({
         success: false,

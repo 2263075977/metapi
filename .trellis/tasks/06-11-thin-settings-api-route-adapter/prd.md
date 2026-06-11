@@ -25,14 +25,22 @@ route file behaves as a thin Fastify adapter.
 
 ## Acceptance Criteria
 
-- [ ] `settings.ts` is reduced toward registration, parsing, and delegation.
-- [ ] Extracted services have focused tests or continue to be covered by route
+- [x] `settings.ts` is reduced toward registration, parsing, and delegation.
+- [x] Extracted services have focused tests or continue to be covered by route
       tests.
-- [ ] All existing `settings.*.test.ts` suites continue to pass.
-- [ ] `npm run repo:drift-check` remains clean.
+- [x] All existing `settings.*.test.ts` suites continue to pass.
+- [x] `npm run repo:drift-check` remains clean.
 
 ## Validation
 
-- `npx vitest run --root . "src/server/routes/api/settings.*.test.ts"`
-- `npm run typecheck:server`
-- `npm run repo:drift-check`
+- Passed `npx vitest run --root . src/server/routes/api/settings.databaseRuntime.test.ts`
+- Passed `npx vitest run --root . src/server/routes/api/settings.databaseMigration.test.ts`
+- Passed `npx vitest run --root . src/server/routes/api/settings.system-proxy-test.test.ts`
+- Passed `npx vitest run --root . src/server/routes/api/settings.model-availability-probe.test.ts`
+- Passed `npx vitest run --root . src/server/routes/api/settings.factory-reset.test.ts`
+- Passed `npx vitest run --root . src/server/routes/api/settings.events.test.ts`
+- Passed `npx vitest run --root . src/server/routes/api/settings.backup-webdav.test.ts`
+- Passed explicit 7-file `npx vitest run --root . src/server/routes/api/settings.*.test.ts` equivalent (60 tests)
+- Passed `npm run typecheck:server`
+- Passed `npm run repo:drift-check`
+- Passed `git diff --check`
