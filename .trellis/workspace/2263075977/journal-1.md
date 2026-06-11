@@ -405,3 +405,36 @@ Created the Trellis parent/child task tree for the next steady debt-reduction op
 ### Next Steps
 
 - None - task complete
+
+
+## Session 13: Align runtime docs and config claims
+
+**Date**: 2026-06-11
+**Task**: Align runtime docs and config claims
+**Branch**: `main`
+
+### Summary
+
+Aligned README, contributor, and getting-started Node.js/TypeScript claims with the repository Node 25 and TypeScript 6 baseline while preserving the Docker Node 22 exception.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9a2a6e1` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
