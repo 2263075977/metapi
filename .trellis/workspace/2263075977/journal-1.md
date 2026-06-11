@@ -504,3 +504,36 @@ Extracted system proxy, proxy failure rules, and downstream proxy token Settings
 ### Next Steps
 
 - None - task complete
+
+
+## Session 16: Decompose OAuth management surfaces
+
+**Date**: 2026-06-11
+**Task**: Decompose OAuth management surfaces
+**Branch**: `main`
+
+### Summary
+
+Extracted OAuth side drawer, route unit modal, and session feedback card into src/web/pages/oauth while preserving OAuth API calls, route/session behavior, and import flows; validated typecheck, repo drift check, diff check, and OAuth web tests.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `407e462` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

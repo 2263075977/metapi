@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 15
+- **Total Sessions**: 16
 - **Last Active**: 2026-06-11
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~506 | Active |
+| `journal-1.md` | ~539 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 16 | 2026-06-11 | Decompose OAuth management surfaces | `407e462` | `main` |
 | 15 | 2026-06-11 | Decompose Settings page surfaces | `e4df7c5` | `main` |
 | 14 | 2026-06-11 | Decompose Accounts page surfaces | `64472a6` | `main` |
 | 13 | 2026-06-11 | Align runtime docs and config claims | `9a2a6e1` | `main` |
