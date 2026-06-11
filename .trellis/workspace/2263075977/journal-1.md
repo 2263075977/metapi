@@ -537,3 +537,36 @@ Extracted OAuth side drawer, route unit modal, and session feedback card into sr
 ### Next Steps
 
 - None - task complete
+
+
+## Session 17: Split web API facade by domain
+
+**Date**: 2026-06-11
+**Task**: Split web API facade by domain
+**Branch**: `main`
+
+### Summary
+
+Split shared web API request infrastructure into src/web/api/client.ts and proxy test APIs into src/web/api/proxyTest.ts while preserving src/web/api.ts as the compatible facade; validated api tests, typecheck, repo drift check, and diff check.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7bf9324` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
