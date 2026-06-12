@@ -669,3 +669,36 @@ Mapped token-router behavior coverage and added an explicit-group visible-model 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 21: Extract token router route matching cache
+
+**Date**: 2026-06-12
+**Task**: Extract token router route matching cache
+**Branch**: `main`
+
+### Summary
+
+Moved token-router route loading, matching, visible-model exposure, model mapping, and route-match cache ownership into a dedicated service module with an architecture guard.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2387b54` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
