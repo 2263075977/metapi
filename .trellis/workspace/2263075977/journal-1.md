@@ -735,3 +735,36 @@ Extracted TokenRouter runtime health, breaker, recent outcome, and persistence s
 ### Next Steps
 
 - None - task complete
+
+
+## Session 23: Extract token router selection engine
+
+**Date**: 2026-06-12
+**Task**: Extract token router selection engine
+**Branch**: `main`
+
+### Summary
+
+Extracted token router selection scoring, stable-first state, and recent-failure helpers into a dedicated service module while keeping TokenRouter as the public facade; documented the boundary and validated targeted tests, server typecheck, and repo drift.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4a2a0a1` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

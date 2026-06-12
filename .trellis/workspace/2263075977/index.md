@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 22
+- **Total Sessions**: 23
 - **Last Active**: 2026-06-12
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~737 | Active |
+| `journal-1.md` | ~770 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 23 | 2026-06-12 | Extract token router selection engine | `4a2a0a1` | `main` |
 | 22 | 2026-06-12 | Extract token router runtime health | `951bbe1` | `main` |
 | 21 | 2026-06-12 | Extract token router route matching cache | `2387b54` | `main` |
 | 20 | 2026-06-12 | Characterize token router core behavior | `45e2dcf` | `main` |
