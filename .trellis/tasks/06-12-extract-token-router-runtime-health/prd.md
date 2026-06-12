@@ -29,12 +29,12 @@ routing behavior and exported helper compatibility.
 
 ## Acceptance Criteria
 
-- [ ] Runtime health maps and persistence logic no longer live in
+- [x] Runtime health maps and persistence logic no longer live in
       `tokenRouter.ts`.
-- [ ] Selection and outcome code consume runtime health through an explicit
+- [x] Selection and outcome code consume runtime health through an explicit
       module contract.
-- [ ] Existing runtime-health, breaker, and persistence tests pass.
-- [ ] No new architecture boundary violation is introduced.
+- [x] Existing runtime-health, breaker, and persistence tests pass.
+- [x] No new architecture boundary violation is introduced.
 
 ## Validation
 
