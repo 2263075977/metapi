@@ -131,6 +131,102 @@ const rawText = await readRuntimeResponseText(upstream);
 
 ---
 
+### Scenario: Token Router Selection Service Boundary
+
+#### 1. Scope / Trigger
+- Trigger: adding or changing route candidate selection, weighted scoring,
+  round-robin ordering, stable-first rotation state, route decision probability
+  details, or recent-failure avoidance for token routing.
+- Use this rule for `src/server/services/tokenRouter.ts` and the lower-level
+  selection helpers it delegates to.
+
+#### 2. Signatures
+- Public facade: `src/server/services/tokenRouter.ts`.
+- Selection engine: `src/server/services/tokenRouterSelectionEngine.ts`.
+- Architecture guard:
+  `src/server/services/tokenRouterSelectionEngine.architecture.test.ts`.
+- Compatibility exports that callers may keep importing from the facade include
+  `TokenRouter`, `tokenRouter`, `isChannelRecentlyFailed`,
+  `filterRecentlyFailedCandidates`, `invalidateTokenRouterCache`,
+  `resetSiteRuntimeHealthState`, and `__tokenRouterTestUtils`.
+
+#### 3. Contracts
+- `tokenRouter.ts` remains the public service facade. Route callers, API
+  handlers, and tests should keep importing token-router behavior through the
+  facade unless a task explicitly changes the public boundary.
+- `tokenRouterSelectionEngine.ts` owns selection math and selection-local state:
+  weighted contribution calculation, stable-first pool planning, stable-first
+  rotation and observation caches, round-robin candidate ordering,
+  cost/load/runtime-health selection multipliers, probability reason text, and
+  recent-failure filtering.
+- The facade owns route lookup, candidate eligibility assembly, token value
+  resolution, OAuth route-unit member dispatch, persistence writes, and public
+  response payload assembly.
+- Selection cache invalidation must stay explicit. Route-scoped invalidation
+  should clear both route-match caches and selection-engine route caches; global
+  invalidation should clear both global cache families.
+
+#### 4. Validation & Error Matrix
+- Selection engine imports `tokenRouter.ts` -> reject; this creates a facade
+  cycle and hides selection state below a public service.
+- Selection engine imports `src/server/routes/**` -> reject; route adapters must
+  not become service dependencies.
+- API routes or unrelated services import `tokenRouterSelectionEngine.ts`
+  directly -> reject unless the task updates the public boundary and tests.
+- OAuth route-unit member cooldown or DB write logic moves into the selection
+  engine -> reject until outcome/cooldown ownership is extracted into a neutral
+  module.
+- Selection cache clearing is changed without route-scoped and global
+  invalidation coverage -> reject.
+
+#### 5. Good/Base/Bad Cases
+- Good: `tokenRouter.ts` imports `./tokenRouterSelectionEngine.js` and adapts
+  engine results into existing selected-channel and route-decision payloads.
+- Good: the selection engine imports neutral lower-level services for pricing,
+  runtime health, runtime load, and route matching type contracts.
+- Base: public helpers such as `isChannelRecentlyFailed` are re-exported from
+  `tokenRouter.ts` for compatibility.
+- Bad: `src/server/routes/api/tokens.ts` imports
+  `tokenRouterSelectionEngine.ts` to build route-decision payloads.
+- Bad: `tokenRouterSelectionEngine.ts` imports `tokenRouter.ts` for test
+  helpers or public facade state.
+
+#### 6. Tests Required
+- Run:
+  `npm test -- src/server/services/tokenRouter.selection.test.ts src/server/services/tokenRouter.downstream-policy.test.ts src/server/services/tokenRouter.oauth-route-units.test.ts src/server/routes/api/tokens.route-decision-batch.test.ts src/server/routes/api/tokens.route-decision-snapshot.test.ts`.
+- Run:
+  `npm test -- src/server/services/tokenRouterSelectionEngine.architecture.test.ts`.
+- Run `npm run typecheck:server` after import path or public export changes.
+- Run `npm run repo:drift-check` before finishing changes to this boundary.
+
+#### 7. Wrong vs Correct
+
+Wrong:
+```typescript
+// A route adapter bypasses the public facade and binds to selection internals.
+import { calculateWeightedSelection } from '../../services/tokenRouterSelectionEngine.js';
+```
+
+Correct:
+```typescript
+// Route adapters use the public facade; the facade delegates internally.
+import { tokenRouter } from '../../services/tokenRouter.js';
+```
+
+Wrong:
+```typescript
+// The lower-level selection engine imports public facade state.
+import { tokenRouter } from './tokenRouter.js';
+```
+
+Correct:
+```typescript
+// The facade imports the lower-level engine and preserves public exports.
+import { filterRecentlyFailedCandidates } from './tokenRouterSelectionEngine.js';
+```
+
+---
+
 ## Naming Conventions
 
 <!-- File and folder naming rules -->
