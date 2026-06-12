@@ -702,3 +702,36 @@ Moved token-router route loading, matching, visible-model exposure, model mappin
 ### Next Steps
 
 - None - task complete
+
+
+## Session 22: Extract token router runtime health
+
+**Date**: 2026-06-12
+**Task**: Extract token router runtime health
+**Branch**: `main`
+
+### Summary
+
+Extracted TokenRouter runtime health, breaker, recent outcome, and persistence state into tokenRouterRuntimeHealth while preserving facade exports and routing behavior.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `951bbe1` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
