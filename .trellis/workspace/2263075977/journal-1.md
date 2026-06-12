@@ -636,3 +636,36 @@ Extracted settings database runtime/test/migrate payload handling into settingsD
 ### Next Steps
 
 - None - task complete
+
+
+## Session 20: Characterize token router core behavior
+
+**Date**: 2026-06-12
+**Task**: Characterize token router core behavior
+**Branch**: `main`
+
+### Summary
+
+Mapped token-router behavior coverage and added an explicit-group visible-model characterization before extraction work.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `45e2dcf` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
