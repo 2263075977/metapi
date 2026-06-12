@@ -218,6 +218,17 @@ describe('TokenRouter patterns and model mapping', () => {
     expect(decision.actualModel).toBe('claude-opus-4-5');
   });
 
+  it('exposes explicit-group display names while hiding covered exact source routes', async () => {
+    const source = await createRouteWithSingleChannel('claude-opus-4-5');
+    await createExplicitGroupRoute('claude-opus-4-6', [source.route.id]);
+    const router = new TokenRouter();
+
+    const exposedModels = await router.getAvailableModels();
+
+    expect(exposedModels).toContain('claude-opus-4-6');
+    expect(exposedModels).not.toContain('claude-opus-4-5');
+  });
+
   it('falls back to the source exact-route model when explicit-group channels omit sourceModel', async () => {
     const source = await createRouteWithSingleChannel('claude-opus-4-5');
     await createExplicitGroupRoute('claude-test-4.6-sonnet', [source.route.id]);
