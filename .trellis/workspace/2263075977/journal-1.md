@@ -768,3 +768,36 @@ Extracted token router selection scoring, stable-first state, and recent-failure
 ### Next Steps
 
 - None - task complete
+
+
+## Session 24: Extract token router outcome cooldowns
+
+**Date**: 2026-06-13
+**Task**: Extract token router outcome cooldowns
+**Branch**: `main`
+
+### Summary
+
+Extracted token-route success, probe-success, failure, manual-clear, OAuth route-unit cooldown, and credential-scoped cooldown transitions into a dedicated outcome module while keeping TokenRouter as the public facade; validated targeted cooldown tests, server typecheck, and repo drift.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `66e0437` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
