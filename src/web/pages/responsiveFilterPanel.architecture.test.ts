@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const filterSurfaces = [
-  'src/web/pages/Accounts.tsx',
+  'src/web/pages/accounts/AccountsChromeSurface.tsx',
   'src/web/pages/CheckinLog.tsx',
   'src/web/pages/DownstreamKeys.tsx',
   'src/web/pages/Models.tsx',
