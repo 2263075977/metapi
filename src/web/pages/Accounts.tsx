@@ -815,11 +815,12 @@ export default function Accounts() {
   const handleRefreshRuntimeHealth = async () => {
     setActionLoading((s) => ({ ...s, "health-refresh": true }));
     try {
-      const res = await api.refreshAccountHealth();
-      if (res?.queued) {
-        toast.info(res.message || "账号状态刷新任务已提交，完成后会自动更新。");
-      } else {
-        toast.success(res?.message || "账号状态已刷新");
+      const res = await api.refreshAccountHealth({ wait: true });
+      toast.success(res?.message || "账号状态已刷新，正在同步路由通道");
+      try {
+        await api.rebuildRoutes(false, false);
+      } catch {
+        toast.error("账号状态已刷新，但路由通道重建失败，请在路由页面手动重建");
       }
       load(true);
     } catch (e: any) {

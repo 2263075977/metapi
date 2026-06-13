@@ -131,6 +131,41 @@ describe('Accounts edit panel', () => {
     }
   });
 
+  it('waits for runtime health refresh and rebuilds route channels', async () => {
+    let root!: WebTestRenderer;
+    try {
+      await act(async () => {
+        root = create(
+          <MemoryRouter initialEntries={['/accounts']}>
+            <ToastProvider>
+              <Accounts />
+            </ToastProvider>
+          </MemoryRouter>,
+        );
+      });
+      await flushMicrotasks();
+
+      const refreshButton = root.root.find((node) => (
+        node.type === 'button'
+        && typeof node.props.onClick === 'function'
+        && collectText(node).includes('刷新账户状态')
+      ));
+
+      await act(async () => {
+        await refreshButton.props.onClick();
+      });
+      await flushMicrotasks();
+
+      expect(apiMock.refreshAccountHealth).toHaveBeenCalledWith({ wait: true });
+      expect(apiMock.rebuildRoutes).toHaveBeenCalledWith(false, false);
+      expect(apiMock.getAccountsSnapshot).toHaveBeenLastCalledWith({
+        refresh: true,
+      });
+    } finally {
+      root?.unmount();
+    }
+  });
+
   it('opens model modal when clicking model button', async () => {
     apiMock.getAccountModels.mockResolvedValue({
       siteId: 1,
@@ -318,5 +353,4 @@ describe('Accounts edit panel', () => {
     }
   });
 });
-
 
