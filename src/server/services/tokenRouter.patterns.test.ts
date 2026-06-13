@@ -218,6 +218,37 @@ describe('TokenRouter patterns and model mapping', () => {
     expect(decision.actualModel).toBe('claude-opus-4-5');
   });
 
+  it('allows an explicit group display name to match its source exact model', async () => {
+    const source = await createRouteWithSingleChannel(
+      'claude-opus-4-6',
+      undefined,
+      {
+        sourceModel: 'claude-opus-4-6',
+      },
+    );
+    const grouped = await createExplicitGroupRoute('claude-opus-4-6', [source.route.id]);
+    const router = new TokenRouter();
+
+    const selected = await router.selectChannel('claude-opus-4-6');
+    const decision = await router.explainSelection('claude-opus-4-6');
+
+    expect(selected).toBeTruthy();
+    expect(selected?.channel.routeId).toBe(source.route.id);
+    expect(selected?.actualModel).toBe('claude-opus-4-6');
+    expect(decision.routeId).toBe(grouped.id);
+    expect(decision.actualModel).toBe('claude-opus-4-6');
+  });
+
+  it('exposes a source-colliding explicit group model name only once', async () => {
+    const source = await createRouteWithSingleChannel('claude-opus-4-6');
+    await createExplicitGroupRoute('claude-opus-4-6', [source.route.id]);
+    const router = new TokenRouter();
+
+    const exposedModels = await router.getAvailableModels();
+
+    expect(exposedModels.filter((model) => model === 'claude-opus-4-6')).toHaveLength(1);
+  });
+
   it('exposes explicit-group display names while hiding covered exact source routes', async () => {
     const source = await createRouteWithSingleChannel('claude-opus-4-5');
     await createExplicitGroupRoute('claude-opus-4-6', [source.route.id]);

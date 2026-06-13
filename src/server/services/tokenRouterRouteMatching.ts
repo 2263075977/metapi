@@ -144,11 +144,11 @@ function buildVisibleEnabledRoutes(routes: TokenRouterRouteRow[]): TokenRouterRo
 
     return !coveringGroups.some((groupRoute) => {
       if (groupRoute.id === route.id) return false;
-      const groupDisplayName = normalizeRouteDisplayName(groupRoute.displayName);
-      if (!groupDisplayName || exactModelNames.has(groupDisplayName)) return false;
       if (isExplicitGroupRoute(groupRoute)) {
         return groupRoute.sourceRouteIds.includes(route.id);
       }
+      const groupDisplayName = normalizeRouteDisplayName(groupRoute.displayName);
+      if (!groupDisplayName || exactModelNames.has(groupDisplayName)) return false;
       return matchesModelPattern(exactModel, groupRoute.modelPattern);
     });
   });
