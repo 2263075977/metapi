@@ -6,15 +6,26 @@ import {
 import { type DownstreamRoutingPolicy } from './downstreamPolicyTypes.js';
 import { getCachedModelRoutingReferenceCost } from './modelPricingService.js';
 import { proxyChannelCoordinator, type ProxyChannelLoadSnapshot } from './proxyChannelCoordinator.js';
+import { normalizeRouteRoutingStrategy } from './routeRoutingStrategy.js';
 import {
+  isRouteDisplayNameMatch,
+  normalizeChannelSourceModel,
   normalizeModelAlias,
   normalizeRouteDisplayName,
+  resolveActualModelForSelectedChannel,
+  resolveMappedModel,
   type TokenRouterRouteChannelCandidate,
+  type TokenRouterRouteMatch,
 } from './tokenRouterRouteMatching.js';
 import {
+  filterSiteRuntimeBrokenCandidatesByModel,
   getSiteRuntimeHealthDetails,
   resolveStableFirstSuccessRate,
 } from './tokenRouterRuntimeHealth.js';
+import {
+  type RouteDecision,
+  type RouteDecisionCandidate,
+} from '../../shared/tokenRouteContract.js';
 
 type RouteChannelCandidate = TokenRouterRouteChannelCandidate;
 
@@ -57,6 +68,59 @@ export type StableFirstPoolPlan = {
   primarySiteIds: Set<number>;
   observationSiteIds: Set<number>;
   siteStateById: Map<number, StableFirstSitePoolState>;
+};
+
+export type TokenRouteCandidateEligibilityOptions = {
+  requestedModel: string;
+  bypassSourceModelCheck?: boolean;
+  excludeChannelIds?: number[];
+  nowIso?: string;
+  downstreamPolicy?: DownstreamRoutingPolicy;
+};
+
+export type TokenRouteCandidateEligibilityResolver = (
+  candidate: RouteChannelCandidate,
+  options: TokenRouteCandidateEligibilityOptions,
+) => string[];
+
+export type TokenRouteDecisionExplanation = RouteDecision & {
+  routeId?: number;
+  modelPattern?: string;
+  selectedAccountId?: number;
+};
+
+export type BuildTokenRouteDecisionExplanationInput = {
+  match: TokenRouterRouteMatch | null;
+  requestedModel: string;
+  excludeChannelIds?: number[];
+  bypassSourceModelCheck?: boolean;
+  useChannelSourceModelForCost?: boolean;
+  downstreamPolicy: DownstreamRoutingPolicy;
+  getCandidateEligibilityReasons: TokenRouteCandidateEligibilityResolver;
+  nowIso?: string;
+  nowMs?: number;
+};
+
+export type TokenRouteCandidateSelectionForDispatch = {
+  selected: RouteChannelCandidate;
+  mappedModel: string;
+  recordSelection: boolean;
+  nowIso: string;
+  nowMs: number;
+  stableFirstRotationKey?: string;
+  stableFirstObservationKey?: string;
+  usedObservation: boolean;
+};
+
+export type SelectTokenRouteCandidateForDispatchInput = {
+  match: TokenRouterRouteMatch;
+  requestedModel: string;
+  downstreamPolicy: DownstreamRoutingPolicy;
+  excludeChannelIds?: number[];
+  recordSelection?: boolean;
+  getCandidateEligibilityReasons: TokenRouteCandidateEligibilityResolver;
+  nowIso?: string;
+  nowMs?: number;
 };
 
 type StableFirstObservationProgressState = {
@@ -202,6 +266,576 @@ export function clearTokenRouterSelectionCaches(): void {
 
 export function getStableFirstRotationCacheSize(): number {
   return stableFirstLastSelectedSiteByKey.size;
+}
+
+function buildTokenRouteCandidateSelectionForDispatch(
+  selected: RouteChannelCandidate,
+  input: {
+    mappedModel: string;
+    recordSelection: boolean;
+    nowIso: string;
+    nowMs: number;
+    stableFirstRotationKey?: string;
+    stableFirstObservationKey?: string;
+    usedObservation?: boolean;
+  },
+): TokenRouteCandidateSelectionForDispatch {
+  return {
+    selected,
+    mappedModel: input.mappedModel,
+    recordSelection: input.recordSelection,
+    nowIso: input.nowIso,
+    nowMs: input.nowMs,
+    stableFirstRotationKey: input.stableFirstRotationKey,
+    stableFirstObservationKey: input.stableFirstObservationKey,
+    usedObservation: input.usedObservation ?? false,
+  };
+}
+
+export function selectTokenRouteCandidateForDispatch(
+  input: SelectTokenRouteCandidateForDispatchInput,
+): TokenRouteCandidateSelectionForDispatch | null {
+  const excludeChannelIds = input.excludeChannelIds ?? [];
+  const recordSelection = input.recordSelection ?? true;
+  const mappedModel = resolveMappedModel(input.requestedModel, input.match.route.modelMapping);
+  const requestedByDisplayName = isRouteDisplayNameMatch(input.requestedModel, input.match.route.displayName);
+  const routeStrategy = normalizeRouteRoutingStrategy(input.match.route.routingStrategy);
+  const runtimeModelResolver = requestedByDisplayName
+    ? ((candidate: RouteChannelCandidate) => normalizeChannelSourceModel(candidate.channel.sourceModel) || mappedModel)
+    : mappedModel;
+
+  const nowIso = input.nowIso ?? new Date().toISOString();
+  const nowMs = input.nowMs ?? Date.now();
+  const available = input.match.channels.filter((candidate) => (
+    input.getCandidateEligibilityReasons(candidate, {
+      requestedModel: input.requestedModel,
+      bypassSourceModelCheck: requestedByDisplayName,
+      excludeChannelIds,
+      nowIso,
+      downstreamPolicy: input.downstreamPolicy,
+    }).length === 0
+  ));
+
+  if (available.length === 0) return null;
+
+  if (routeStrategy === 'round_robin') {
+    const breakerFiltered = filterSiteRuntimeBrokenCandidatesByModel(available, runtimeModelResolver, nowMs);
+    const selected = selectRoundRobinCandidate(breakerFiltered.candidates);
+    if (!selected) return null;
+    return buildTokenRouteCandidateSelectionForDispatch(selected, {
+      mappedModel,
+      recordSelection,
+      nowIso,
+      nowMs,
+    });
+  }
+
+  if (routeStrategy === 'stable_first') {
+    const breakerFiltered = filterSiteRuntimeBrokenCandidatesByModel(available, runtimeModelResolver, nowMs);
+    const candidates = filterRecentlyFailedCandidates(breakerFiltered.candidates, nowMs);
+    const rotationKey = buildStableFirstRotationKey(input.match.route.id, input.requestedModel);
+    const poolPlan = buildStableFirstPoolPlan(
+      candidates,
+      requestedByDisplayName ? runtimeModelResolver : mappedModel,
+      nowMs,
+    );
+    const shouldUseObservation = (
+      poolPlan.observationCandidates.length > 0
+      && (
+        poolPlan.primaryCandidates.length <= 0
+        || (
+          recordSelection
+          && shouldUseStableFirstObservationCandidate(rotationKey, poolPlan.observationCandidates, nowMs)
+        )
+      )
+    );
+    const selectionPool = shouldUseObservation
+      ? poolPlan.observationCandidates
+      : (poolPlan.primaryCandidates.length > 0 ? poolPlan.primaryCandidates : poolPlan.observationCandidates);
+    const selected = selectStableFirstCandidateByWeight(
+      selectionPool,
+      requestedByDisplayName ? runtimeModelResolver : mappedModel,
+      input.downstreamPolicy,
+      nowMs,
+      shouldUseObservation ? `${rotationKey}:observe` : rotationKey,
+    );
+    if (!selected) return null;
+    return buildTokenRouteCandidateSelectionForDispatch(selected, {
+      mappedModel,
+      recordSelection,
+      nowIso,
+      nowMs,
+      stableFirstRotationKey: rotationKey,
+      stableFirstObservationKey: `${rotationKey}:observe`,
+      usedObservation: shouldUseObservation,
+    });
+  }
+
+  const layers = new Map<number, typeof available>();
+  for (const candidate of available) {
+    const priority = candidate.channel.priority ?? 0;
+    if (!layers.has(priority)) layers.set(priority, []);
+    layers.get(priority)!.push(candidate);
+  }
+
+  const sortedPriorities = Array.from(layers.keys()).sort((a, b) => a - b);
+  for (const priority of sortedPriorities) {
+    const rawLayer = layers.get(priority) ?? [];
+    const breakerFiltered = filterSiteRuntimeBrokenCandidatesByModel(rawLayer, runtimeModelResolver, nowMs);
+    const candidates = filterRecentlyFailedCandidates(breakerFiltered.candidates, nowMs);
+    const selected = selectWeightedRandomCandidate(
+      candidates,
+      requestedByDisplayName ? runtimeModelResolver : mappedModel,
+      input.downstreamPolicy,
+      nowMs,
+    );
+    if (!selected) continue;
+    return buildTokenRouteCandidateSelectionForDispatch(selected, {
+      mappedModel,
+      recordSelection,
+      nowIso,
+      nowMs,
+    });
+  }
+
+  return null;
+}
+
+export function buildTokenRouteDecisionExplanation(
+  input: BuildTokenRouteDecisionExplanationInput,
+): TokenRouteDecisionExplanation {
+  const excludeChannelIds = input.excludeChannelIds ?? [];
+  const downstreamPolicy = input.downstreamPolicy;
+
+  if (!input.match) {
+    return {
+      requestedModel: input.requestedModel,
+      actualModel: input.requestedModel,
+      matched: false,
+      summary: ['未匹配到启用的路由'],
+      candidates: [],
+    };
+  }
+
+  const requestedByDisplayName = isRouteDisplayNameMatch(input.requestedModel, input.match.route.displayName);
+  const bypassSourceModelCheck = (input.bypassSourceModelCheck ?? false) || requestedByDisplayName;
+  const useChannelSourceModelForCost = (input.useChannelSourceModelForCost ?? false) || requestedByDisplayName;
+  const mappedModel = resolveMappedModel(input.requestedModel, input.match.route.modelMapping);
+  const routeStrategy = normalizeRouteRoutingStrategy(input.match.route.routingStrategy);
+  const runtimeModelResolver = requestedByDisplayName
+    ? ((candidate: RouteChannelCandidate) => normalizeChannelSourceModel(candidate.channel.sourceModel) || mappedModel)
+    : mappedModel;
+
+  const nowIso = input.nowIso ?? new Date().toISOString();
+  const nowMs = input.nowMs ?? Date.now();
+  const summary: string[] = [
+    `命中路由：${input.match.route.modelPattern}`,
+    routeStrategy === 'round_robin'
+      ? '路由策略：轮询'
+      : (routeStrategy === 'stable_first' ? '路由策略：稳定优先' : '路由策略：按权重随机'),
+  ];
+  if (requestedByDisplayName) {
+    summary.push(`按显示名命中：${normalizeRouteDisplayName(input.match.route.displayName)}`);
+    summary.push('显示名仅用于聚合展示，实际转发模型按选中通道来源模型决定');
+  }
+  const available: RouteChannelCandidate[] = [];
+  const candidates: RouteDecisionCandidate[] = [];
+  const candidateMap = new Map<number, RouteDecisionCandidate>();
+
+  for (const row of input.match.channels) {
+    const reasonParts = input.getCandidateEligibilityReasons(row, {
+      requestedModel: input.requestedModel,
+      bypassSourceModelCheck,
+      excludeChannelIds,
+      nowIso,
+      downstreamPolicy,
+    });
+
+    const recentlyFailed = routeStrategy !== 'round_robin'
+      ? isChannelRecentlyFailed(row.channel, nowMs)
+      : false;
+    const eligible = reasonParts.length === 0;
+    const candidate: RouteDecisionCandidate = {
+      channelId: row.channel.id,
+      accountId: row.account.id,
+      username: row.account.username || `account-${row.account.id}`,
+      siteName: row.site.name || 'unknown',
+      tokenName: row.token?.name || 'default',
+      priority: row.channel.priority ?? 0,
+      weight: row.channel.weight ?? 10,
+      eligible,
+      recentlyFailed,
+      avoidedByRecentFailure: false,
+      probability: 0,
+      reason: eligible ? '可用' : reasonParts.join('、'),
+    };
+    candidates.push(candidate);
+    candidateMap.set(candidate.channelId, candidate);
+
+    if (eligible) {
+      available.push(row);
+    }
+  }
+
+  if (available.length === 0) {
+    summary.push('没有可用通道（全部被禁用、站点不可用、冷却或令牌不可用）');
+    return {
+      requestedModel: input.requestedModel,
+      actualModel: mappedModel,
+      matched: true,
+      routeId: input.match.route.id,
+      modelPattern: input.match.route.modelPattern,
+      summary,
+      candidates,
+    };
+  }
+
+  if (routeStrategy === 'round_robin') {
+    const rawOrdered = getRoundRobinCandidates(available);
+    const breakerFiltered = filterSiteRuntimeBrokenCandidatesByModel(rawOrdered, runtimeModelResolver, nowMs);
+    if (breakerFiltered.avoided.length > 0) {
+      for (const item of breakerFiltered.avoided) {
+        const target = candidateMap.get(item.candidate.channel.id);
+        if (!target) continue;
+        target.reason = item.reason;
+      }
+      const breakerSummaryLabel = breakerFiltered.avoided.some((item) => item.reason.includes('模型熔断'))
+        ? '运行时熔断避让'
+        : '站点熔断避让';
+      summary.push(`${breakerSummaryLabel} ${breakerFiltered.avoided.length}`);
+    }
+    const ordered = breakerFiltered.candidates;
+    let selected: RouteChannelCandidate | null = null;
+
+    for (let index = 0; index < ordered.length; index += 1) {
+      const target = candidateMap.get(ordered[index].channel.id);
+      if (!target || !target.eligible) continue;
+      target.probability = index === 0 ? 100 : 0;
+      target.reason = index === 0
+        ? `轮询命中（全局第 1 / ${ordered.length} 位，忽略优先级）`
+        : `轮询排队中（全局第 ${index + 1} / ${ordered.length} 位，忽略优先级）`;
+      if (index === 0) {
+        selected = ordered[index];
+      }
+    }
+
+    if (!selected) {
+      summary.push('本次未选出通道');
+      return {
+        requestedModel: input.requestedModel,
+        actualModel: mappedModel,
+        matched: true,
+        routeId: input.match.route.id,
+        modelPattern: input.match.route.modelPattern,
+        summary,
+        candidates,
+      };
+    }
+
+    const selectedChannel = candidateMap.get(selected.channel.id);
+    const selectedLabel = selectedChannel
+      ? `${selectedChannel.username} @ ${selectedChannel.siteName} / ${selectedChannel.tokenName}`
+      : `channel-${selected.channel.id}`;
+    const actualModel = resolveActualModelForSelectedChannel(
+      input.requestedModel,
+      input.match.route,
+      mappedModel,
+      selected.channel.sourceModel,
+    );
+    summary.push(`全局轮询：可用 ${ordered.length}，忽略优先级`);
+    summary.push(`最终选择：${selectedLabel}`);
+    if (actualModel !== mappedModel) {
+      summary.push(`实际转发模型：${actualModel}`);
+    }
+
+    return {
+      requestedModel: input.requestedModel,
+      actualModel,
+      matched: true,
+      routeId: input.match.route.id,
+      modelPattern: input.match.route.modelPattern,
+      selectedChannelId: selected.channel.id,
+      selectedAccountId: selected.account.id,
+      selectedLabel,
+      summary,
+      candidates,
+    };
+  }
+
+  if (routeStrategy === 'stable_first') {
+    const breakerFiltered = filterSiteRuntimeBrokenCandidatesByModel(available, runtimeModelResolver, nowMs);
+    if (breakerFiltered.avoided.length > 0) {
+      for (const item of breakerFiltered.avoided) {
+        const target = candidateMap.get(item.candidate.channel.id);
+        if (!target) continue;
+        target.reason = item.reason;
+      }
+    }
+
+    const filteredCandidates = filterRecentlyFailedCandidates(breakerFiltered.candidates, nowMs);
+    const avoided = breakerFiltered.candidates.filter((row) => !filteredCandidates.some((item) => item.channel.id === row.channel.id));
+    if (avoided.length > 0) {
+      for (const row of avoided) {
+        const target = candidateMap.get(row.channel.id);
+        if (!target) continue;
+        target.avoidedByRecentFailure = true;
+        target.reason = `最近失败，优先避让（${resolveFailureBackoffSec(row.channel.failCount)} 秒窗口）`;
+      }
+    }
+
+    const rotationKey = buildStableFirstRotationKey(input.match.route.id, input.requestedModel);
+    const poolPlan = buildStableFirstPoolPlan(
+      filteredCandidates,
+      useChannelSourceModelForCost ? runtimeModelResolver : mappedModel,
+      nowMs,
+    );
+    const observationDueNow = poolPlan.observationCandidates.length > 0
+      && shouldUseStableFirstObservationCandidate(rotationKey, poolPlan.observationCandidates, nowMs);
+    const useObservationNow = poolPlan.observationCandidates.length > 0
+      && (poolPlan.primaryCandidates.length <= 0 || observationDueNow);
+    const remainingPrimaryRequestsBeforeObservation = getRemainingStableFirstPrimaryRequestsBeforeObservation(
+      rotationKey,
+      poolPlan.primaryCandidates.length > 0,
+    );
+    const observationBlockedByCooldown = poolPlan.primaryCandidates.length > 0
+      && poolPlan.observationCandidates.length > 0
+      && remainingPrimaryRequestsBeforeObservation === 0
+      && !observationDueNow;
+    const primaryWeighted = calculateWeightedSelection(
+      poolPlan.primaryCandidates,
+      useChannelSourceModelForCost ? runtimeModelResolver : mappedModel,
+      downstreamPolicy,
+      nowMs,
+      'stable_first',
+      rotationKey,
+    );
+    const observationWeighted = poolPlan.observationCandidates.length > 0
+      ? calculateWeightedSelection(
+        poolPlan.observationCandidates,
+        useChannelSourceModelForCost ? runtimeModelResolver : mappedModel,
+        downstreamPolicy,
+        nowMs,
+        'stable_first',
+        `${rotationKey}:observe`,
+      )
+      : {
+        selected: null,
+        details: [],
+        stableSiteCount: 0,
+      };
+
+    for (const detail of primaryWeighted.details) {
+      const target = candidateMap.get(detail.candidate.channel.id);
+      if (!target) continue;
+      target.probability = Number((detail.probability * (useObservationNow ? 0 : 100)).toFixed(2));
+      if (target.eligible && !target.avoidedByRecentFailure) {
+        target.reason = useObservationNow
+          ? `主池：本次让位给观察池灰度请求；${detail.reason}`
+          : `主池：${detail.reason}`;
+      }
+    }
+    for (const detail of observationWeighted.details) {
+      const target = candidateMap.get(detail.candidate.channel.id);
+      if (!target) continue;
+      target.probability = Number((detail.probability * (useObservationNow ? 100 : 0)).toFixed(2));
+      if (target.eligible && !target.avoidedByRecentFailure) {
+        const siteState = poolPlan.siteStateById.get(detail.candidate.site.id);
+        const observationWindowPrefix = useObservationNow
+          ? (poolPlan.primaryCandidates.length > 0
+            ? '本次命中灰度真实请求'
+            : '当前主池为空，改由观察池承接')
+          : (observationBlockedByCooldown
+            ? '当前已到灰度窗口，但观察站点仍在冷却'
+            : `当前还需 ${remainingPrimaryRequestsBeforeObservation} 次主池请求`);
+        target.reason = poolPlan.observationSiteIds.has(detail.candidate.site.id)
+          ? `${siteState?.observationReason || '观察池'}；${observationWindowPrefix}；${detail.reason}`
+          : `观察池：${observationWindowPrefix}；${detail.reason}`;
+      }
+    }
+
+    const weighted = useObservationNow
+      ? observationWeighted
+      : (primaryWeighted.selected ? primaryWeighted : observationWeighted);
+    if (!weighted.selected) {
+      summary.push('本次未选出通道');
+      return {
+        requestedModel: input.requestedModel,
+        actualModel: mappedModel,
+        matched: true,
+        routeId: input.match.route.id,
+        modelPattern: input.match.route.modelPattern,
+        summary,
+        candidates,
+      };
+    }
+
+    const summaryParts = [`稳定优先：可用 ${available.length}`];
+    if (poolPlan.primarySiteIds.size > 0) {
+      summaryParts.push(`主池站点 ${poolPlan.primarySiteIds.size}`);
+    }
+    if (poolPlan.observationSiteIds.size > 0) {
+      summaryParts.push(`观察池站点 ${poolPlan.observationSiteIds.size}`);
+    }
+    summaryParts.push('按近期成功率分层后按配置顺序轮询站点');
+    if (poolPlan.observationSiteIds.size > 0) {
+      if (useObservationNow) {
+        summaryParts.push('本次命中观察池灰度流量');
+      } else if (observationBlockedByCooldown) {
+        summaryParts.push('观察池已到灰度窗口，但候选站点仍在观察冷却');
+      } else if (poolPlan.primaryCandidates.length <= 0) {
+        summaryParts.push('当前主池为空，由观察池承接流量');
+      } else {
+        summaryParts.push(`观察池仅消耗少量真实请求灰度流量（当前还需 ${remainingPrimaryRequestsBeforeObservation} 次主池请求）`);
+      }
+    }
+    if (breakerFiltered.avoided.length > 0) {
+      const breakerSummaryLabel = breakerFiltered.avoided.some((item) => item.reason.includes('模型熔断'))
+        ? '运行时熔断避让'
+        : '站点熔断避让';
+      summaryParts.push(`${breakerSummaryLabel} ${breakerFiltered.avoided.length}`);
+    }
+    if (avoided.length > 0) {
+      summaryParts.push(`最近失败避让 ${avoided.length}`);
+    }
+    summary.push(summaryParts.join('，'));
+
+    const selectedChannel = candidateMap.get(weighted.selected.channel.id);
+    const selectedLabel = selectedChannel
+      ? `${selectedChannel.username} @ ${selectedChannel.siteName} / ${selectedChannel.tokenName}`
+      : `channel-${weighted.selected.channel.id}`;
+    const actualModel = resolveActualModelForSelectedChannel(
+      input.requestedModel,
+      input.match.route,
+      mappedModel,
+      weighted.selected.channel.sourceModel,
+    );
+    summary.push(`最终选择：${selectedLabel}（P${weighted.selected.channel.priority ?? 0}）`);
+    if (actualModel !== mappedModel) {
+      summary.push(`实际转发模型：${actualModel}`);
+    }
+
+    return {
+      requestedModel: input.requestedModel,
+      actualModel,
+      matched: true,
+      routeId: input.match.route.id,
+      modelPattern: input.match.route.modelPattern,
+      selectedChannelId: weighted.selected.channel.id,
+      selectedAccountId: weighted.selected.account.id,
+      selectedLabel,
+      summary,
+      candidates,
+    };
+  }
+
+  const availableByPriority = new Map<number, RouteChannelCandidate[]>();
+  for (const row of available) {
+    const priority = row.channel.priority ?? 0;
+    if (!availableByPriority.has(priority)) availableByPriority.set(priority, []);
+    availableByPriority.get(priority)!.push(row);
+  }
+
+  const sortedPriorities = Array.from(availableByPriority.keys()).sort((a, b) => a - b);
+  let selected: RouteChannelCandidate | null = null;
+  let selectedPriority = 0;
+
+  for (const priority of sortedPriorities) {
+    const rawLayer = availableByPriority.get(priority) ?? [];
+    if (rawLayer.length === 0) continue;
+
+    const breakerFiltered = filterSiteRuntimeBrokenCandidatesByModel(rawLayer, runtimeModelResolver, nowMs);
+    if (breakerFiltered.avoided.length > 0) {
+      for (const item of breakerFiltered.avoided) {
+        const target = candidateMap.get(item.candidate.channel.id);
+        if (!target) continue;
+        target.reason = item.reason;
+      }
+    }
+
+    const filteredLayer = filterRecentlyFailedCandidates(breakerFiltered.candidates, nowMs);
+    const avoided = breakerFiltered.candidates.filter((row) => !filteredLayer.some((item) => item.channel.id === row.channel.id));
+    if (avoided.length > 0) {
+      for (const row of avoided) {
+        const target = candidateMap.get(row.channel.id);
+        if (!target) continue;
+        target.avoidedByRecentFailure = true;
+        target.reason = `最近失败，优先避让（${resolveFailureBackoffSec(row.channel.failCount)} 秒窗口）`;
+      }
+    }
+
+    const weighted = calculateWeightedSelection(
+      filteredLayer,
+      useChannelSourceModelForCost ? runtimeModelResolver : mappedModel,
+      downstreamPolicy,
+      nowMs,
+      'weighted',
+    );
+    for (const detail of weighted.details) {
+      const target = candidateMap.get(detail.candidate.channel.id);
+      if (!target) continue;
+      target.probability = Number((detail.probability * 100).toFixed(2));
+      if (target.eligible && !target.avoidedByRecentFailure) {
+        target.reason = detail.reason;
+      }
+    }
+
+    if (!weighted.selected) continue;
+    selected = weighted.selected;
+    selectedPriority = priority;
+    const layerSummaryParts = [`优先级 P${priority}：可用 ${rawLayer.length}`];
+    if (breakerFiltered.avoided.length > 0) {
+      const breakerSummaryLabel = breakerFiltered.avoided.some((item) => item.reason.includes('模型熔断'))
+        ? '运行时熔断避让'
+        : '站点熔断避让';
+      layerSummaryParts.push(`${breakerSummaryLabel} ${breakerFiltered.avoided.length}`);
+    }
+    if (avoided.length > 0) {
+      layerSummaryParts.push(`最近失败避让 ${avoided.length}`);
+    }
+    summary.push(layerSummaryParts.join('，'));
+    break;
+  }
+
+  if (!selected) {
+    summary.push('本次未选出通道');
+    return {
+      requestedModel: input.requestedModel,
+      actualModel: mappedModel,
+      matched: true,
+      routeId: input.match.route.id,
+      modelPattern: input.match.route.modelPattern,
+      summary,
+      candidates,
+    };
+  }
+
+  const selectedChannel = candidateMap.get(selected.channel.id);
+  const selectedLabel = selectedChannel
+    ? `${selectedChannel.username} @ ${selectedChannel.siteName} / ${selectedChannel.tokenName}`
+    : `channel-${selected.channel.id}`;
+  const actualModel = resolveActualModelForSelectedChannel(
+    input.requestedModel,
+    input.match.route,
+    mappedModel,
+    selected.channel.sourceModel,
+  );
+  summary.push(`最终选择：${selectedLabel}（P${selectedPriority}）`);
+  if (actualModel !== mappedModel) {
+    summary.push(`实际转发模型：${actualModel}`);
+  }
+
+  return {
+    requestedModel: input.requestedModel,
+    actualModel,
+    matched: true,
+    routeId: input.match.route.id,
+    modelPattern: input.match.route.modelPattern,
+    selectedChannelId: selected.channel.id,
+    selectedAccountId: selected.account.id,
+    selectedLabel,
+    summary,
+    candidates,
+  };
 }
 
 export function isChannelRecentlyFailed(

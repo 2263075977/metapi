@@ -159,6 +159,13 @@ const rawText = await readRuntimeResponseText(upstream);
   rotation and observation caches, round-robin candidate ordering,
   cost/load/runtime-health selection multipliers, probability reason text, and
   recent-failure filtering.
+- The facade should call coarse selection-engine orchestration helpers such as
+  `buildTokenRouteDecisionExplanation()` and
+  `selectTokenRouteCandidateForDispatch()` for route-decision payload
+  probability details and strategy candidate selection. It may pass an
+  eligibility callback into those helpers, then keep dispatch finalization,
+  OAuth route-unit member resolution, token value resolution, and persistence
+  writes in the facade.
 - The facade owns route lookup, candidate eligibility assembly, token value
   resolution, OAuth route-unit member dispatch, persistence writes, and public
   response payload assembly.
@@ -173,6 +180,12 @@ const rawText = await readRuntimeResponseText(upstream);
   not become service dependencies.
 - API routes or unrelated services import `tokenRouterSelectionEngine.ts`
   directly -> reject unless the task updates the public boundary and tests.
+- `tokenRouter.ts` imports low-level selection math helpers such as
+  `calculateWeightedSelection()`, `selectWeightedRandomCandidate()`,
+  `selectRoundRobinCandidate()`, `selectStableFirstCandidateByWeight()`,
+  `buildStableFirstPoolPlan()`, or
+  `shouldUseStableFirstObservationCandidate()` -> reject; the facade should use
+  the high-level selection-engine orchestration helpers instead.
 - OAuth route-unit member cooldown or DB write logic moves into the selection
   engine -> reject until outcome/cooldown ownership is extracted into a neutral
   module.
@@ -196,6 +209,9 @@ const rawText = await readRuntimeResponseText(upstream);
   `npm test -- src/server/services/tokenRouter.selection.test.ts src/server/services/tokenRouter.downstream-policy.test.ts src/server/services/tokenRouter.oauth-route-units.test.ts src/server/routes/api/tokens.route-decision-batch.test.ts src/server/routes/api/tokens.route-decision-snapshot.test.ts`.
 - Run:
   `npm test -- src/server/services/tokenRouterSelectionEngine.architecture.test.ts`.
+- The selection architecture test should also guard the facade against
+  re-importing low-level selection math helpers after it has been thinned to the
+  high-level selection-engine API.
 - Run `npm run typecheck:server` after import path or public export changes.
 - Run `npm run repo:drift-check` before finishing changes to this boundary.
 
@@ -223,6 +239,18 @@ Correct:
 ```typescript
 // The facade imports the lower-level engine and preserves public exports.
 import { filterRecentlyFailedCandidates } from './tokenRouterSelectionEngine.js';
+```
+
+Wrong:
+```typescript
+// The facade owns selection probability math again.
+import { calculateWeightedSelection } from './tokenRouterSelectionEngine.js';
+```
+
+Correct:
+```typescript
+// The facade delegates strategy selection and keeps dispatch finalization.
+import { selectTokenRouteCandidateForDispatch } from './tokenRouterSelectionEngine.js';
 ```
 
 ---
