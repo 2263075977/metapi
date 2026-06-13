@@ -1441,6 +1441,13 @@ export async function rebuildTokenRoutesFromAvailability() {
 
   const routes = await db.select().from(schema.tokenRoutes).all();
   const channels = await db.select().from(schema.routeChannels).all();
+  const explicitGroupSourceRouteIds = new Set(
+    (await db.select({ sourceRouteId: schema.routeGroupSources.sourceRouteId })
+      .from(schema.routeGroupSources)
+      .all())
+      .map((row) => row.sourceRouteId)
+      .filter((routeId) => Number.isFinite(routeId) && routeId > 0),
+  );
 
   let createdRoutes = 0;
   let createdChannels = 0;
@@ -1522,8 +1529,15 @@ export async function rebuildTokenRoutesFromAvailability() {
     if (!modelPattern || !isExactModelPattern(modelPattern) || latestModelNames.has(modelPattern)) {
       continue;
     }
-
     const routeChannelCount = channels.filter((channel) => channel.routeId === route.id).length;
+    if (explicitGroupSourceRouteIds.has(route.id)) {
+      if (routeChannelCount > 0) {
+        await db.delete(schema.routeChannels).where(eq(schema.routeChannels.routeId, route.id)).run();
+        removedChannels += routeChannelCount;
+      }
+      continue;
+    }
+
     if (routeChannelCount > 0) {
       removedChannels += routeChannelCount;
     }

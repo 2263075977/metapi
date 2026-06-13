@@ -332,4 +332,98 @@ describe('rebuildTokenRoutesFromAvailability', () => {
     const wildcardRouteAfter = await db.select().from(schema.tokenRoutes).where(eq(schema.tokenRoutes.id, wildcardRoute.id)).get();
     expect(wildcardRouteAfter).toBeDefined();
   });
+
+  it('preserves stale exact routes referenced by explicit groups across rebuilds', async () => {
+    const site = await db.insert(schema.sites).values({
+      name: 'site-explicit-source',
+      url: 'https://site-explicit-source.example.com',
+      platform: 'new-api',
+    }).returning().get();
+
+    const account = await db.insert(schema.accounts).values({
+      siteId: site.id,
+      username: 'user-explicit-source',
+      accessToken: 'access-explicit-source',
+      status: 'active',
+    }).returning().get();
+
+    const token = await db.insert(schema.accountTokens).values({
+      accountId: account.id,
+      name: 'default',
+      token: 'sk-explicit-source',
+      source: 'manual',
+      enabled: true,
+      isDefault: true,
+    }).returning().get();
+
+    const availability = await db.insert(schema.tokenModelAvailability).values({
+      tokenId: token.id,
+      modelName: 'claude-opus-4-6',
+      available: true,
+    }).returning().get();
+
+    await rebuildTokenRoutesFromAvailability();
+
+    const sourceRoute = await db.select().from(schema.tokenRoutes)
+      .where(eq(schema.tokenRoutes.modelPattern, 'claude-opus-4-6'))
+      .get();
+    expect(sourceRoute).toBeDefined();
+
+    const groupRoute = await db.insert(schema.tokenRoutes).values({
+      modelPattern: 'claude-opus-4-6',
+      displayName: 'claude-opus-4-6',
+      routeMode: 'explicit_group',
+      enabled: true,
+    }).returning().get();
+
+    await db.insert(schema.routeGroupSources).values({
+      groupRouteId: groupRoute.id,
+      sourceRouteId: sourceRoute!.id,
+    }).run();
+
+    await db.update(schema.tokenModelAvailability)
+      .set({ available: false })
+      .where(eq(schema.tokenModelAvailability.id, availability.id))
+      .run();
+
+    const unavailableRebuild = await rebuildTokenRoutesFromAvailability();
+
+    expect(unavailableRebuild.removedRoutes).toBe(0);
+    const preservedSourceRoute = await db.select().from(schema.tokenRoutes)
+      .where(eq(schema.tokenRoutes.id, sourceRoute!.id))
+      .get();
+    expect(preservedSourceRoute).toBeDefined();
+    const unavailableChannels = await db.select().from(schema.routeChannels)
+      .where(eq(schema.routeChannels.routeId, sourceRoute!.id))
+      .all();
+    expect(unavailableChannels).toHaveLength(0);
+
+    const preservedSourceLink = await db.select().from(schema.routeGroupSources)
+      .where(and(
+        eq(schema.routeGroupSources.groupRouteId, groupRoute.id),
+        eq(schema.routeGroupSources.sourceRouteId, sourceRoute!.id),
+      ))
+      .get();
+    expect(preservedSourceLink).toBeDefined();
+
+    await db.update(schema.tokenModelAvailability)
+      .set({ available: true })
+      .where(eq(schema.tokenModelAvailability.id, availability.id))
+      .run();
+
+    await rebuildTokenRoutesFromAvailability();
+
+    const restoredSourceLinks = await db.select().from(schema.routeGroupSources)
+      .where(eq(schema.routeGroupSources.groupRouteId, groupRoute.id))
+      .all();
+    expect(restoredSourceLinks.map((row) => row.sourceRouteId)).toEqual([sourceRoute!.id]);
+
+    const restoredChannels = await db.select().from(schema.routeChannels)
+      .where(and(
+        eq(schema.routeChannels.routeId, sourceRoute!.id),
+        eq(schema.routeChannels.tokenId, token.id),
+      ))
+      .all();
+    expect(restoredChannels).toHaveLength(1);
+  });
 });
