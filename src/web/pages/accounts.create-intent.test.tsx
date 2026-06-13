@@ -66,6 +66,9 @@ describe('Accounts create intent handling', () => {
       const rendered = JSON.stringify(root.toJSON());
       expect(rendered).toContain('添加 Session 连接');
       expect(rendered).not.toContain('添加 API Key 连接');
+      expect(apiMock.getAccountsSnapshot).toHaveBeenCalledWith({
+        refresh: true,
+      });
 
       const selects = root.root.findAllByType(ModernSelect);
       expect(selects[1]?.props.value).toBe('10');

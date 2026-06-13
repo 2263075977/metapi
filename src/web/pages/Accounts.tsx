@@ -189,7 +189,12 @@ export default function Accounts() {
     }
   };
   useEffect(() => {
-    void load();
+    const params = new URLSearchParams(location.search);
+    const shouldRefreshForCreateIntent =
+      activeSegment !== "tokens" &&
+      isTruthyFlag(params.get("create")) &&
+      Boolean(parsePositiveInt(params.get("siteId")));
+    void load(shouldRefreshForCreateIntent);
   }, []);
 
   const selectedTokenSite = useMemo(
