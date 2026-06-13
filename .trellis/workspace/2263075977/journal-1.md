@@ -19,7 +19,11 @@ Removed the standalone external availability monitor surface, including frontend
 
 ### Main Changes
 
-(Add details)
+- Moved route decision explanation construction into `tokenRouterSelectionEngine.ts`.
+- Moved normal route strategy candidate selection into `selectTokenRouteCandidateForDispatch()`.
+- Kept `tokenRouter.ts` as the public facade for route lookup, eligibility callbacks, OAuth route-unit member dispatch, token resolution, persistence, and compatibility exports.
+- Added a selection architecture guard that prevents the facade from re-importing low-level selection math helpers.
+- Updated the backend directory-structure spec with the thin-facade selection boundary.
 
 ### Git Commits
 
@@ -30,7 +34,12 @@ Removed the standalone external availability monitor surface, including frontend
 
 ### Testing
 
-- [OK] (Add test results)
+- [OK] `npm test -- src/server/services/tokenRouter.test.ts src/server/services/tokenRouter.patterns.test.ts src/server/services/tokenRouter.cache.test.ts src/server/services/tokenRouter.selection.test.ts src/server/services/tokenRouter.oauth-route-units.test.ts src/server/services/tokenRouter.downstream-policy.test.ts src/server/services/tokenRouter.siteStatus.test.ts src/server/services/tokenRouter.session-decoupling.test.ts`
+- [OK] `npm test -- src/server/routes/api/tokens.route-decision-batch.test.ts src/server/routes/api/tokens.route-decision-snapshot.test.ts`
+- [OK] `npm test -- src/server/services/tokenRouterSelectionEngine.architecture.test.ts`
+- [OK] `NODE_OPTIONS=--max-old-space-size=2048 npm run typecheck:server`
+- [OK] `npm run repo:drift-check`
+- [OK] `git diff --check`
 
 ### Status
 
@@ -789,6 +798,39 @@ Extracted token-route success, probe-success, failure, manual-clear, OAuth route
 | Hash | Message |
 |------|---------|
 | `66e0437` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 25: Thin token router service facade
+
+**Date**: 2026-06-13
+**Task**: Thin token router service facade
+**Branch**: `main`
+
+### Summary
+
+Reduced tokenRouter.ts to a thinner facade by moving route decision explanation and strategy candidate selection into tokenRouterSelectionEngine, added an architecture guard for low-level selection helper imports, updated backend boundary spec, and archived the final child task.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e9e9ace` | (see git log) |
 
 ### Testing
 

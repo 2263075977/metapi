@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 24
+- **Total Sessions**: 25
 - **Last Active**: 2026-06-13
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~803 | Active |
+| `journal-1.md` | ~836 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 25 | 2026-06-13 | Thin token router service facade | `e9e9ace` | `main` |
 | 24 | 2026-06-13 | Extract token router outcome cooldowns | `66e0437` | `main` |
 | 23 | 2026-06-12 | Extract token router selection engine | `4a2a0a1` | `main` |
 | 22 | 2026-06-12 | Extract token router runtime health | `951bbe1` | `main` |
