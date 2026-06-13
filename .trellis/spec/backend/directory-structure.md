@@ -227,6 +227,110 @@ import { filterRecentlyFailedCandidates } from './tokenRouterSelectionEngine.js'
 
 ---
 
+### Scenario: Token Router Outcome Cooldown Service Boundary
+
+#### 1. Scope / Trigger
+- Trigger: adding or changing token-route success/failure recording,
+  probe-success recovery, manual failure/cooldown clearing, OAuth route-unit
+  member cooldown transitions, credential-scoped sibling cooldowns, or
+  runtime-health side effects caused by route outcomes.
+- Use this rule for `src/server/services/tokenRouter.ts` and lower-level
+  outcome/cooldown helpers it delegates to.
+
+#### 2. Signatures
+- Public facade: `src/server/services/tokenRouter.ts`.
+- Outcome module: `src/server/services/tokenRouterOutcomeCooldowns.ts`.
+- Architecture guard:
+  `src/server/services/tokenRouterOutcomeCooldowns.architecture.test.ts`.
+- Public methods that must keep their facade signatures:
+  `TokenRouter.recordSuccess`, `TokenRouter.recordProbeSuccess`,
+  `TokenRouter.recordFailure`, and `TokenRouter.clearChannelFailureState`.
+
+#### 3. Contracts
+- `tokenRouter.ts` remains the public service facade. Route callers and API
+  handlers should call the facade methods rather than importing the outcome
+  module directly.
+- `tokenRouterOutcomeCooldowns.ts` owns DB writes and state transitions for:
+  direct route-channel outcome counters, OAuth route-unit member outcome
+  counters, short-window usage-limit cooldowns, Codex OAuth reset hints,
+  weighted backoff cooldowns, round-robin staged cooldowns,
+  probe-success recovery, manual failure/cooldown clear, and runtime-health
+  success/failure/reset side effects.
+- The outcome module may import neutral lower-level services such as
+  `tokenRouterRouteMatching.ts`, `tokenRouterRuntimeHealth.ts`,
+  `routeRoutingStrategy.ts`, OAuth helpers, and selection cooldown helpers.
+- Selection cache invalidation stays explicit. Pass facade-owned cache hooks
+  such as `invalidateRouteScopedCache` and `invalidateAllTokenRouterCache`
+  into the outcome module instead of importing `tokenRouter.ts`.
+- The facade continues to own route lookup, candidate eligibility, token
+  resolution, selected-candidate dispatch finalization, and public payload
+  assembly.
+
+#### 4. Validation & Error Matrix
+- Outcome module imports `tokenRouter.ts` -> reject; this creates a cycle from
+  lower-level transition logic back to the public facade.
+- Outcome module imports `src/server/routes/**` -> reject; route adapters must
+  not become service dependencies.
+- API routes or unrelated services import `tokenRouterOutcomeCooldowns.ts`
+  directly -> reject unless the task explicitly changes the public boundary.
+- Outcome changes alter cooldown durations, thresholds, or failure-count reset
+  semantics without targeted test updates -> reject.
+- Manual clear no longer clears persisted runtime health state or no longer
+  invalidates both route-match and selection caches -> reject.
+- OAuth route-unit outcome writes ignore the `actualAccountId` selected member
+  and update the outer route channel account instead -> reject.
+
+#### 5. Good/Base/Bad Cases
+- Good: `TokenRouter.recordFailure()` delegates to
+  `recordTokenRouteFailure({ channelId, context, actualAccountId, cacheHooks })`.
+- Good: outcome code patches cached route-channel rows after direct channel
+  writes and invalidates route-scoped caches after OAuth route-unit member
+  writes.
+- Good: short-window usage-limit cooldowns reuse credential-scoped sibling
+  lookup rather than each route owning local cooldown rules.
+- Base: `tokenRouter.ts` exports the same public methods and test utilities as
+  before the extraction.
+- Bad: `tokens.ts` imports `recordTokenRouteFailure()` directly to clear a
+  cooldown.
+- Bad: `tokenRouterOutcomeCooldowns.ts` imports `tokenRouter.ts` to call
+  `invalidateTokenRouterCache()`.
+
+#### 6. Tests Required
+- Run:
+  `npm test -- src/server/services/tokenRouter.cache.test.ts src/server/services/tokenRouter.oauth-route-units.test.ts src/server/routes/api/tokens.cooldown-clear.test.ts`.
+- Run:
+  `npm test -- src/server/services/tokenRouterOutcomeCooldowns.architecture.test.ts`.
+- Run `npm run typecheck:server` after import path or public method changes.
+- Run `npm run repo:drift-check` before finishing changes to this boundary.
+
+#### 7. Wrong vs Correct
+
+Wrong:
+```typescript
+// A route adapter bypasses the public TokenRouter facade.
+import { clearTokenRouteChannelFailureState } from '../../services/tokenRouterOutcomeCooldowns.js';
+```
+
+Correct:
+```typescript
+// Route adapters use the public facade and let it delegate internally.
+import { tokenRouter } from '../../services/tokenRouter.js';
+```
+
+Wrong:
+```typescript
+// The lower-level outcome module imports the public facade for cache clearing.
+import { invalidateTokenRouterCache } from './tokenRouter.js';
+```
+
+Correct:
+```typescript
+// The facade passes explicit cache hooks into the lower-level outcome module.
+await recordTokenRouteFailure({ channelId, context, cacheHooks });
+```
+
+---
+
 ## Naming Conventions
 
 <!-- File and folder naming rules -->
