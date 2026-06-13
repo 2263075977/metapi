@@ -4,7 +4,7 @@ import type { SiteProxyConfigLike } from '../../services/siteProxy.js';
 import { tokenRouter } from '../../services/tokenRouter.js';
 import { resolveProxyUsageWithSelfLogFallback } from '../../services/proxyUsageFallbackService.js';
 import type { DownstreamRoutingPolicy } from '../../services/downstreamPolicyTypes.js';
-import { reportProxyAllFailed, reportTokenExpired } from '../../services/alertService.js';
+import { reportTokenExpired } from '../../services/alertService.js';
 import { isTokenExpiredError } from '../../services/alertRules.js';
 import { shouldRetryProxyRequest } from '../../services/proxyRetryPolicy.js';
 import { composeProxyLogMessage } from '../../services/proxyLogMessage.js';
@@ -19,6 +19,7 @@ import { refreshOauthAccessTokenSingleflight } from '../../services/oauth/refres
 import { proxyChannelCoordinator } from '../../services/proxyChannelCoordinator.js';
 import { readRuntimeResponseText } from '../executors/types.js';
 import { selectProxyChannelForAttempt } from '../channelSelection.js';
+import { reportProxyAllFailedIfRouteExhausted } from '../routeFailureAlerts.js';
 
 type SelectedChannel = Awaited<ReturnType<typeof tokenRouter.selectChannel>>;
 type SurfaceWarningScope = 'chat' | 'responses';
@@ -472,6 +473,9 @@ export function createSurfaceFailureToolkit(input: {
   warningScope: SurfaceWarningScope;
   downstreamPath: string;
   maxRetries: number;
+  downstreamPolicy: DownstreamRoutingPolicy;
+  excludeChannelIds: number[];
+  forcedChannelId?: number | null;
   clientContext?: DownstreamClientContext | null;
   downstreamApiKeyId?: number | null;
 }) {
@@ -580,9 +584,12 @@ export function createSurfaceFailureToolkit(input: {
         if (retry) return retry;
       }
 
-      runBestEffort('report proxy all failed', () => reportProxyAllFailed({
-        model: args.requestedModel,
+      runBestEffort('report proxy all failed', () => reportProxyAllFailedIfRouteExhausted({
+        requestedModel: args.requestedModel,
         reason: `upstream returned HTTP ${args.status}`,
+        downstreamPolicy: input.downstreamPolicy,
+        excludeChannelIds: input.excludeChannelIds,
+        forcedChannelId: input.forcedChannelId,
       }));
 
       return {
@@ -637,9 +644,12 @@ export function createSurfaceFailureToolkit(input: {
         if (retry) return retry;
       }
 
-      runBestEffort('report proxy all failed', () => reportProxyAllFailed({
-        model: args.requestedModel,
+      runBestEffort('report proxy all failed', () => reportProxyAllFailedIfRouteExhausted({
+        requestedModel: args.requestedModel,
         reason: args.failure.reason,
+        downstreamPolicy: input.downstreamPolicy,
+        excludeChannelIds: input.excludeChannelIds,
+        forcedChannelId: input.forcedChannelId,
       }));
 
       return {
@@ -683,9 +693,12 @@ export function createSurfaceFailureToolkit(input: {
       const retry = maybeRetry(args.retryCount);
       if (retry) return retry;
 
-      runBestEffort('report proxy all failed', () => reportProxyAllFailed({
-        model: args.requestedModel,
+      runBestEffort('report proxy all failed', () => reportProxyAllFailedIfRouteExhausted({
+        requestedModel: args.requestedModel,
         reason: args.errorMessage || 'network failure',
+        downstreamPolicy: input.downstreamPolicy,
+        excludeChannelIds: input.excludeChannelIds,
+        forcedChannelId: input.forcedChannelId,
       }));
 
       return {

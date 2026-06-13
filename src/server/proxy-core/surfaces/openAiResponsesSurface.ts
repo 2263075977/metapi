@@ -1,7 +1,6 @@
 import { TextDecoder } from 'node:util';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { config } from '../../config.js';
-import { reportProxyAllFailed } from '../../services/alertService.js';
 import { hasProxyUsagePayload, mergeProxyUsage, parseProxyUsage } from '../../services/proxyUsageParser.js';
 import { openAiResponsesTransformer } from '../../transformers/openai/responses/index.js';
 import {
@@ -102,6 +101,7 @@ import {
   canRetryChannelSelection,
   getTesterForcedChannelId,
 } from '../channelSelection.js';
+import { reportProxyAllFailedIfRouteExhausted } from '../routeFailureAlerts.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object';
@@ -309,10 +309,14 @@ export async function handleOpenAiResponsesSurfaceRequest(
     });
     const downstreamApiKeyId = getProxyAuthContext(request)?.keyId ?? null;
     const maxRetries = getProxyMaxChannelRetries();
+    const excludeChannelIds: number[] = [];
     const failureToolkit = createSurfaceFailureToolkit({
       warningScope: 'responses',
       downstreamPath,
       maxRetries,
+      downstreamPolicy,
+      excludeChannelIds,
+      forcedChannelId,
       clientContext,
       downstreamApiKeyId,
     });
@@ -352,7 +356,6 @@ export async function handleOpenAiResponsesSurfaceRequest(
         finalResponseBody: responseBody,
       });
     };
-    const excludeChannelIds: number[] = [];
     let retryCount = 0;
 
     while (retryCount <= maxRetries) {
@@ -370,9 +373,12 @@ export async function handleOpenAiResponsesSurfaceRequest(
 
       if (!selected) {
         const noChannelMessage = buildForcedChannelUnavailableMessage(forcedChannelId);
-        await reportProxyAllFailed({
-          model: requestedModel,
+        await reportProxyAllFailedIfRouteExhausted({
+          requestedModel,
           reason: forcedChannelId ? noChannelMessage : 'No available channels after retries',
+          downstreamPolicy,
+          excludeChannelIds,
+          forcedChannelId,
         });
         const payload = {
           error: { message: noChannelMessage, type: 'server_error' as const },

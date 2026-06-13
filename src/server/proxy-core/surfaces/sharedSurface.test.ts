@@ -4,6 +4,7 @@ import { EMPTY_DOWNSTREAM_ROUTING_POLICY } from '../../services/downstreamPolicy
 const selectChannelMock = vi.fn();
 const selectNextChannelMock = vi.fn();
 const selectPreferredChannelMock = vi.fn();
+const explainSelectionMock = vi.fn();
 const recordFailureMock = vi.fn();
 const refreshModelsAndRebuildRoutesMock = vi.fn();
 const composeProxyLogMessageMock = vi.fn();
@@ -35,6 +36,7 @@ vi.mock('../../services/tokenRouter.js', () => ({
     selectChannel: (...args: unknown[]) => selectChannelMock(...args),
     selectNextChannel: (...args: unknown[]) => selectNextChannelMock(...args),
     selectPreferredChannel: (...args: unknown[]) => selectPreferredChannelMock(...args),
+    explainSelection: (...args: unknown[]) => explainSelectionMock(...args),
     recordFailure: (...args: unknown[]) => recordFailureMock(...args),
     recordSuccess: (...args: unknown[]) => recordSuccessMock(...args),
   },
@@ -116,6 +118,8 @@ describe('selectSurfaceChannelForAttempt', () => {
     selectChannelMock.mockReset();
     selectNextChannelMock.mockReset();
     selectPreferredChannelMock.mockReset();
+    explainSelectionMock.mockReset();
+    explainSelectionMock.mockResolvedValue({ selectedChannelId: undefined });
     recordFailureMock.mockReset();
     refreshModelsAndRebuildRoutesMock.mockReset();
     composeProxyLogMessageMock.mockReset();
@@ -469,6 +473,8 @@ describe('selectSurfaceChannelForAttempt', () => {
       warningScope: 'chat',
       downstreamPath: '/v1/chat/completions',
       maxRetries: 2,
+      downstreamPolicy: EMPTY_DOWNSTREAM_ROUTING_POLICY,
+      excludeChannelIds: [11],
       clientContext: null,
       downstreamApiKeyId: 44,
     });
@@ -528,6 +534,8 @@ describe('selectSurfaceChannelForAttempt', () => {
       warningScope: 'chat',
       downstreamPath: '/v1/chat/completions',
       maxRetries: 2,
+      downstreamPolicy: EMPTY_DOWNSTREAM_ROUTING_POLICY,
+      excludeChannelIds: [11],
       clientContext: null,
       downstreamApiKeyId: null,
     });
@@ -562,6 +570,8 @@ describe('selectSurfaceChannelForAttempt', () => {
       warningScope: 'responses',
       downstreamPath: '/v1/responses',
       maxRetries: 2,
+      downstreamPolicy: EMPTY_DOWNSTREAM_ROUTING_POLICY,
+      excludeChannelIds: [11],
       clientContext: null,
       downstreamApiKeyId: null,
     });
@@ -598,10 +608,10 @@ describe('selectSurfaceChannelForAttempt', () => {
       siteName: 'Codex OAuth',
       detail: 'HTTP 401',
     });
-    expect(reportProxyAllFailedMock).toHaveBeenCalledWith({
+    await vi.waitFor(() => expect(reportProxyAllFailedMock).toHaveBeenCalledWith({
       model: 'gpt-5.2',
       reason: 'upstream returned HTTP 401',
-    });
+    }));
   });
 
   it('returns terminal failures even when final alerting throws', async () => {
@@ -618,6 +628,8 @@ describe('selectSurfaceChannelForAttempt', () => {
       warningScope: 'responses',
       downstreamPath: '/v1/responses',
       maxRetries: 2,
+      downstreamPolicy: EMPTY_DOWNSTREAM_ROUTING_POLICY,
+      excludeChannelIds: [11],
       clientContext: null,
       downstreamApiKeyId: null,
     });
@@ -659,6 +671,8 @@ describe('selectSurfaceChannelForAttempt', () => {
       warningScope: 'chat',
       downstreamPath: '/v1/chat/completions',
       maxRetries: 2,
+      downstreamPolicy: EMPTY_DOWNSTREAM_ROUTING_POLICY,
+      excludeChannelIds: [11],
       clientContext: null,
       downstreamApiKeyId: null,
     });
@@ -699,10 +713,10 @@ describe('selectSurfaceChannelForAttempt', () => {
       errorText: 'upstream failure',
       modelName: 'upstream-model',
     });
-    expect(reportProxyAllFailedMock).toHaveBeenCalledWith({
+    await vi.waitFor(() => expect(reportProxyAllFailedMock).toHaveBeenCalledWith({
       model: 'gpt-5.2',
       reason: 'upstream failure',
-    });
+    }));
     expect(recordOauthQuotaResetHintMock).not.toHaveBeenCalled();
   });
 
@@ -716,6 +730,8 @@ describe('selectSurfaceChannelForAttempt', () => {
       warningScope: 'responses',
       downstreamPath: '/v1/responses',
       maxRetries: 2,
+      downstreamPolicy: EMPTY_DOWNSTREAM_ROUTING_POLICY,
+      excludeChannelIds: [11],
       clientContext: null,
       downstreamApiKeyId: null,
     });
@@ -748,10 +764,59 @@ describe('selectSurfaceChannelForAttempt', () => {
       errorText: 'socket hang up',
       modelName: 'upstream-model',
     });
-    expect(reportProxyAllFailedMock).toHaveBeenCalledWith({
+    await vi.waitFor(() => expect(reportProxyAllFailedMock).toHaveBeenCalledWith({
       model: 'gpt-5.2',
       reason: 'socket hang up',
+    }));
+  });
+
+  it('does not report proxy all failed when another failover channel is still selectable', async () => {
+    composeProxyLogMessageMock.mockReturnValue('normalized error');
+    formatUtcSqlDateTimeMock.mockReturnValue('2026-03-21 22:00:00');
+    insertProxyLogMock.mockResolvedValue(undefined);
+    explainSelectionMock.mockResolvedValue({ selectedChannelId: 22 });
+
+    const { createSurfaceFailureToolkit } = await import('./sharedSurface.js');
+    const toolkit = createSurfaceFailureToolkit({
+      warningScope: 'responses',
+      downstreamPath: '/v1/responses',
+      maxRetries: 2,
+      downstreamPolicy: EMPTY_DOWNSTREAM_ROUTING_POLICY,
+      excludeChannelIds: [11],
+      clientContext: null,
+      downstreamApiKeyId: null,
     });
+
+    const result = await toolkit.handleExecutionError({
+      selected: {
+        channel: { id: 11, routeId: 22 },
+        account: { id: 33, username: 'oauth-user' },
+        site: { name: 'Codex OAuth' },
+        actualModel: 'upstream-model',
+      },
+      requestedModel: 'gpt-5.2',
+      modelName: 'upstream-model',
+      errorMessage: 'socket hang up',
+      latencyMs: 650,
+      retryCount: 2,
+    });
+
+    expect(result).toEqual({
+      action: 'respond',
+      status: 502,
+      payload: {
+        error: {
+          message: 'Upstream error: socket hang up',
+          type: 'upstream_error',
+        },
+      },
+    });
+    await vi.waitFor(() => expect(explainSelectionMock).toHaveBeenCalledWith(
+      'gpt-5.2',
+      [11],
+      EMPTY_DOWNSTREAM_ROUTING_POLICY,
+    ));
+    expect(reportProxyAllFailedMock).not.toHaveBeenCalled();
   });
 
   it('records stream failures with error text even without a runtime status code', async () => {
@@ -764,6 +829,8 @@ describe('selectSurfaceChannelForAttempt', () => {
       warningScope: 'responses',
       downstreamPath: '/v1/responses',
       maxRetries: 2,
+      downstreamPolicy: EMPTY_DOWNSTREAM_ROUTING_POLICY,
+      excludeChannelIds: [11],
       clientContext: null,
       downstreamApiKeyId: null,
     });

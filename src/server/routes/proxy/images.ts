@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { fetch } from 'undici';
 import { config } from '../../config.js';
 import { tokenRouter } from '../../services/tokenRouter.js';
-import { reportProxyAllFailed, reportTokenExpired } from '../../services/alertService.js';
+import { reportTokenExpired } from '../../services/alertService.js';
 import { isTokenExpiredError } from '../../services/alertRules.js';
 import { estimateProxyCost } from '../../services/modelPricingService.js';
 import { shouldRetryProxyRequest } from '../../services/proxyRetryPolicy.js';
@@ -26,6 +26,7 @@ import {
   getTesterForcedChannelId,
   selectProxyChannelForAttempt,
 } from '../../proxy-core/channelSelection.js';
+import { reportProxyAllFailedIfRouteExhausted } from '../../proxy-core/routeFailureAlerts.js';
 
 export async function imagesProxyRoute(app: FastifyInstance) {
   ensureMultipartBufferParser(app);
@@ -61,9 +62,12 @@ export async function imagesProxyRoute(app: FastifyInstance) {
 
       if (!selected) {
         const noChannelMessage = buildForcedChannelUnavailableMessage(forcedChannelId);
-        await reportProxyAllFailed({
-          model: requestedModel,
+        await reportProxyAllFailedIfRouteExhausted({
+          requestedModel,
           reason: forcedChannelId ? noChannelMessage : 'No available channels after retries',
+          downstreamPolicy,
+          excludeChannelIds,
+          forcedChannelId,
         });
         return reply.code(503).send({
           error: { message: noChannelMessage, type: 'server_error' },
@@ -136,9 +140,12 @@ export async function imagesProxyRoute(app: FastifyInstance) {
             retryCount++;
             continue;
           }
-          await reportProxyAllFailed({
-            model: requestedModel,
+          await reportProxyAllFailedIfRouteExhausted({
+            requestedModel,
             reason: data.message,
+            downstreamPolicy,
+            excludeChannelIds,
+            forcedChannelId,
           });
           return reply.code(502).send({
             error: { message: data.message, type: 'upstream_error' },
@@ -215,9 +222,12 @@ export async function imagesProxyRoute(app: FastifyInstance) {
           retryCount++;
           continue;
         }
-        await reportProxyAllFailed({
-          model: requestedModel,
+        await reportProxyAllFailedIfRouteExhausted({
+          requestedModel,
           reason: errorText || 'network failure',
+          downstreamPolicy,
+          excludeChannelIds,
+          forcedChannelId,
         });
         return reply.code(status || 502).send({
           error: {
@@ -266,9 +276,12 @@ export async function imagesProxyRoute(app: FastifyInstance) {
 
       if (!selected) {
         const noChannelMessage = buildForcedChannelUnavailableMessage(forcedChannelId);
-        await reportProxyAllFailed({
-          model: requestedModel,
+        await reportProxyAllFailedIfRouteExhausted({
+          requestedModel,
           reason: forcedChannelId ? noChannelMessage : 'No available channels after retries',
+          downstreamPolicy,
+          excludeChannelIds,
+          forcedChannelId,
         });
         return reply.code(503).send({
           error: { message: noChannelMessage, type: 'server_error' },
@@ -356,9 +369,12 @@ export async function imagesProxyRoute(app: FastifyInstance) {
             retryCount++;
             continue;
           }
-          await reportProxyAllFailed({
-            model: requestedModel,
+          await reportProxyAllFailedIfRouteExhausted({
+            requestedModel,
             reason: data.message,
+            downstreamPolicy,
+            excludeChannelIds,
+            forcedChannelId,
           });
           return reply.code(502).send({
             error: { message: data.message, type: 'upstream_error' },
@@ -435,9 +451,12 @@ export async function imagesProxyRoute(app: FastifyInstance) {
           retryCount++;
           continue;
         }
-        await reportProxyAllFailed({
-          model: requestedModel,
+        await reportProxyAllFailedIfRouteExhausted({
+          requestedModel,
           reason: errorText || 'network failure',
+          downstreamPolicy,
+          excludeChannelIds,
+          forcedChannelId,
         });
         return reply.code(status || 502).send({
           error: {

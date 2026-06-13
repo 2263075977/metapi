@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { fetch } from 'undici';
 import { tokenRouter } from '../../services/tokenRouter.js';
-import { reportProxyAllFailed, reportTokenExpired } from '../../services/alertService.js';
+import { reportTokenExpired } from '../../services/alertService.js';
 import { isTokenExpiredError } from '../../services/alertRules.js';
 import { estimateProxyCost } from '../../services/modelPricingService.js';
 import { shouldRetryProxyRequest } from '../../services/proxyRetryPolicy.js';
@@ -25,6 +25,7 @@ import {
   getTesterForcedChannelId,
   selectProxyChannelForAttempt,
 } from '../../proxy-core/channelSelection.js';
+import { reportProxyAllFailedIfRouteExhausted } from '../../proxy-core/routeFailureAlerts.js';
 import { runWithSiteApiEndpointPool, SiteApiEndpointRequestError } from '../../services/siteApiEndpointService.js';
 
 function rewriteVideoResponsePublicId(payload: unknown, publicId: string): unknown {
@@ -73,9 +74,12 @@ export async function videosProxyRoute(app: FastifyInstance) {
 
       if (!selected) {
         const noChannelMessage = buildForcedChannelUnavailableMessage(forcedChannelId);
-        await reportProxyAllFailed({
-          model: requestedModel,
+        await reportProxyAllFailedIfRouteExhausted({
+          requestedModel,
           reason: forcedChannelId ? noChannelMessage : 'No available channels after retries',
+          downstreamPolicy,
+          excludeChannelIds,
+          forcedChannelId,
         });
         return reply.code(503).send({
           error: { message: noChannelMessage, type: 'server_error' },
@@ -184,9 +188,12 @@ export async function videosProxyRoute(app: FastifyInstance) {
           retryCount += 1;
           continue;
         }
-        await reportProxyAllFailed({
-          model: requestedModel,
+        await reportProxyAllFailedIfRouteExhausted({
+          requestedModel,
           reason: errorText || 'network failure',
+          downstreamPolicy,
+          excludeChannelIds,
+          forcedChannelId,
         });
         return reply.code(status || 502).send({
           error: {

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { EMPTY_DOWNSTREAM_ROUTING_POLICY } from '../../services/downstreamPolicyTypes.js';
 
 const formatUtcSqlDateTimeMock = vi.fn();
 const composeProxyLogMessageMock = vi.fn();
@@ -101,6 +102,8 @@ describe('shared surface usage source logging', () => {
       warningScope: 'responses',
       downstreamPath: '/v1/responses',
       maxRetries: 2,
+      downstreamPolicy: EMPTY_DOWNSTREAM_ROUTING_POLICY,
+      excludeChannelIds: [11],
       clientContext: {
         clientKind: 'codex',
         sessionId: 'turn-1',

@@ -2,7 +2,7 @@
 import { fetch } from 'undici';
 import { config } from '../../config.js';
 import { tokenRouter } from '../../services/tokenRouter.js';
-import { reportProxyAllFailed, reportTokenExpired } from '../../services/alertService.js';
+import { reportTokenExpired } from '../../services/alertService.js';
 import { isTokenExpiredError } from '../../services/alertRules.js';
 import { shouldRetryProxyRequest } from '../../services/proxyRetryPolicy.js';
 import { resolveProxyUsageWithSelfLogFallback } from '../../services/proxyUsageFallbackService.js';
@@ -28,6 +28,7 @@ import {
   getTesterForcedChannelId,
   selectProxyChannelForAttempt,
 } from '../../proxy-core/channelSelection.js';
+import { reportProxyAllFailedIfRouteExhausted } from '../../proxy-core/routeFailureAlerts.js';
 
 export async function completionsProxyRoute(app: FastifyInstance) {
   app.post('/v1/completions', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -66,9 +67,12 @@ export async function completionsProxyRoute(app: FastifyInstance) {
 
       if (!selected) {
         const noChannelMessage = buildForcedChannelUnavailableMessage(forcedChannelId);
-        await reportProxyAllFailed({
-          model: requestedModel,
+        await reportProxyAllFailedIfRouteExhausted({
+          requestedModel,
           reason: forcedChannelId ? noChannelMessage : 'No available channels after retries',
+          downstreamPolicy,
+          excludeChannelIds,
+          forcedChannelId,
         });
         return reply.code(503).send({
           error: { message: noChannelMessage, type: 'server_error' },
@@ -259,9 +263,12 @@ export async function completionsProxyRoute(app: FastifyInstance) {
             continue;
           }
 
-          await reportProxyAllFailed({
-            model: requestedModel,
+          await reportProxyAllFailedIfRouteExhausted({
+            requestedModel,
             reason: failure.reason,
+            downstreamPolicy,
+            excludeChannelIds,
+            forcedChannelId,
           });
 
           return reply.code(failure.status).send({
@@ -358,9 +365,12 @@ export async function completionsProxyRoute(app: FastifyInstance) {
           retryCount++;
           continue;
         }
-        await reportProxyAllFailed({
-          model: requestedModel,
+        await reportProxyAllFailedIfRouteExhausted({
+          requestedModel,
           reason: errorText || 'network failure',
+          downstreamPolicy,
+          excludeChannelIds,
+          forcedChannelId,
         });
         return reply.code(status || 502).send({
           error: { message: status > 0 ? errorText : `Upstream error: ${errorText}`, type: 'upstream_error' },
