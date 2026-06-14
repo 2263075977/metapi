@@ -22,6 +22,7 @@ type ParsedSummary = {
   routesCount: number;
   channelsCount: number;
   siteDisabledModelsCount: number;
+  accountDisabledModelsCount: number;
   manualModelsCount: number;
   downstreamApiKeysCount: number;
   settingsCount: number;
@@ -142,6 +143,7 @@ function parseImportSummary(raw: string): ParsedSummary | null {
     routesCount: 0,
     channelsCount: 0,
     siteDisabledModelsCount: 0,
+    accountDisabledModelsCount: 0,
     manualModelsCount: 0,
     downstreamApiKeysCount: 0,
     settingsCount: 0,
@@ -234,6 +236,7 @@ function parseImportSummary(raw: string): ParsedSummary | null {
       routesCount: toCount(accountsSection?.tokenRoutes),
       channelsCount: toCount(accountsSection?.routeChannels),
       siteDisabledModelsCount: toCount(accountsSection?.siteDisabledModels),
+      accountDisabledModelsCount: toCount(accountsSection?.accountDisabledModels),
       manualModelsCount: toCount(accountsSection?.manualModels),
       downstreamApiKeysCount: toCount(accountsSection?.downstreamApiKeys),
       settingsCount: toCount(preferencesSection?.settings),
@@ -685,11 +688,12 @@ export default function ImportExport() {
                       || summary.routesCount
                       || summary.channelsCount
                       || summary.siteDisabledModelsCount
+                      || summary.accountDisabledModelsCount
                       || summary.manualModelsCount
                       || summary.downstreamApiKeysCount
                       || summary.settingsCount) ? (
                       <div>
-                        统计：站点 {summary.sitesCount} / 账号 {summary.accountsCount} / 令牌 {summary.tokensCount} / 路由 {summary.routesCount} / 通道 {summary.channelsCount} / 站点禁用模型 {summary.siteDisabledModelsCount} / 手工模型 {summary.manualModelsCount} / 下游 Key {summary.downstreamApiKeysCount} / 设置 {summary.settingsCount}
+                        统计：站点 {summary.sitesCount} / 账号 {summary.accountsCount} / 令牌 {summary.tokensCount} / 路由 {summary.routesCount} / 通道 {summary.channelsCount} / 站点禁用模型 {summary.siteDisabledModelsCount} / 账号禁用模型 {summary.accountDisabledModelsCount} / 手工模型 {summary.manualModelsCount} / 下游 Key {summary.downstreamApiKeysCount} / 设置 {summary.settingsCount}
                       </div>
                     ) : null}
                     {summary.hasLegacyData ? <div>检测到兼容结构：将按兼容模式导入。</div> : null}

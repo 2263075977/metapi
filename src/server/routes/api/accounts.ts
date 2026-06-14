@@ -42,6 +42,7 @@ import {
   type AccountCreatePayload,
   parseAccountBatchPayload,
   parseAccountCreatePayload,
+  parseAccountDisabledModelsPayload,
   parseAccountHealthRefreshPayload,
   parseAccountLoginPayload,
   parseAccountManualModelsPayload,
@@ -199,6 +200,17 @@ function normalizeSortOrder(input: unknown): number | null {
   const parsed = Number.parseInt(String(input), 10);
   if (!Number.isFinite(parsed)) return null;
   return Math.max(0, parsed);
+}
+
+function normalizeModelNameList(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  return Array.from(
+    new Set(
+      input
+        .map((model) => String(model).trim())
+        .filter((model) => model.length > 0),
+    ),
+  );
 }
 
 function normalizeManagedRefreshToken(input: unknown): string | undefined {
@@ -1746,7 +1758,7 @@ export async function accountsRoutes(app: FastifyInstance) {
     },
   );
 
-  // Get model list for an account (available models + disabled status at site level)
+  // Get model list for an account (available models + account/site disabled status)
   app.get<{ Params: { id: string } }>(
     "/api/accounts/:id/models",
     async (request, reply) => {
@@ -1783,31 +1795,101 @@ export async function accountsRoutes(app: FastifyInstance) {
       // Get disabled models for this site
       const disabledRows = await db
         .select({
+          modelName: schema.accountDisabledModels.modelName,
+        })
+        .from(schema.accountDisabledModels)
+        .where(eq(schema.accountDisabledModels.accountId, accountId))
+        .all();
+
+      const siteDisabledRows = await db
+        .select({
           modelName: schema.siteDisabledModels.modelName,
         })
         .from(schema.siteDisabledModels)
         .where(eq(schema.siteDisabledModels.siteId, siteId))
         .all();
 
-      const disabledSet = new Set(disabledRows.map((r) => r.modelName));
+      const disabledSet = new Set(
+        disabledRows.map((r) => r.modelName.toLowerCase()),
+      );
+      const siteDisabledSet = new Set(
+        siteDisabledRows.map((r) => r.modelName.toLowerCase()),
+      );
 
       const models = modelRows
         .filter((r) => r.available)
         .map((r) => ({
           name: r.modelName,
           latencyMs: r.latencyMs,
-          disabled: disabledSet.has(r.modelName),
+          disabled: disabledSet.has(r.modelName.toLowerCase()),
+          siteDisabled: siteDisabledSet.has(r.modelName.toLowerCase()),
           isManual: !!r.isManual,
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
+
+      const effectiveDisabledCount = models.filter(
+        (m) => m.disabled || m.siteDisabled,
+      ).length;
 
       return {
         siteId,
         siteName: account.sites.name,
         models,
         totalCount: models.length,
-        disabledCount: models.filter((m) => m.disabled).length,
+        disabledCount: effectiveDisabledCount,
+        accountDisabledCount: models.filter((m) => m.disabled).length,
+        siteDisabledCount: models.filter((m) => m.siteDisabled).length,
       };
+    },
+  );
+
+  // Replace disabled models for a single account/API key connection.
+  app.put<{ Params: { id: string }; Body: unknown }>(
+    "/api/accounts/:id/models/disabled",
+    async (request, reply) => {
+      const parsedBody = parseAccountDisabledModelsPayload(request.body);
+      if (!parsedBody.success) {
+        return reply.code(400).send({ message: parsedBody.error });
+      }
+
+      const accountId = parseInt(request.params.id, 10);
+      if (!Number.isFinite(accountId) || accountId <= 0) {
+        return reply.code(400).send({ message: "账号 ID 无效" });
+      }
+
+      const account = await db
+        .select()
+        .from(schema.accounts)
+        .where(eq(schema.accounts.id, accountId))
+        .get();
+
+      if (!account) {
+        return reply.code(404).send({ message: "账号不存在" });
+      }
+
+      const models = normalizeModelNameList(parsedBody.data.models);
+
+      try {
+        await db.transaction(async (tx) => {
+          await tx
+            .delete(schema.accountDisabledModels)
+            .where(eq(schema.accountDisabledModels.accountId, accountId))
+            .run();
+
+          if (models.length > 0) {
+            await tx
+              .insert(schema.accountDisabledModels)
+              .values(models.map((modelName) => ({ accountId, modelName })))
+              .run();
+          }
+        });
+
+        return { accountId, models };
+      } catch (err: any) {
+        return reply
+          .code(500)
+          .send({ success: false, message: err?.message || "保存失败" });
+      }
     },
   );
 
@@ -1830,11 +1912,7 @@ export async function accountsRoutes(app: FastifyInstance) {
         return reply.code(400).send({ message: "模型列表不能为空" });
       }
 
-      const normalizedModels = Array.from(
-        new Set(
-          models.map((m) => String(m).trim()).filter((m) => m.length > 0),
-        ),
-      );
+      const normalizedModels = normalizeModelNameList(models);
       if (normalizedModels.length === 0) {
         return reply.code(400).send({ message: "模型列表不能为空" });
       }

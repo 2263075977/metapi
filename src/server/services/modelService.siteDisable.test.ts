@@ -31,6 +31,7 @@ describe('rebuildTokenRoutesFromAvailability with site disabled models', () => {
         await db.delete(schema.tokenRoutes).run();
         await db.delete(schema.tokenModelAvailability).run();
         await db.delete(schema.modelAvailability).run();
+        await db.delete(schema.accountDisabledModels).run();
         await db.delete(schema.siteDisabledModels).run();
         await db.delete(schema.accountTokens).run();
         await db.delete(schema.accounts).run();
@@ -173,5 +174,57 @@ describe('rebuildTokenRoutesFromAvailability with site disabled models', () => {
             .where(eq(schema.tokenRoutes.modelPattern, 'gpt-5'))
             .get();
         expect(route).toBeDefined();
+    });
+
+    it('only blocks the disabled account, not another API key on the same site', async () => {
+        const site = await db.insert(schema.sites).values({
+            name: 'shared-site',
+            url: 'https://shared-site.example.com',
+            platform: 'new-api',
+        }).returning().get();
+
+        const accountA = await db.insert(schema.accounts).values({
+            siteId: site.id,
+            username: 'key-a',
+            accessToken: '',
+            apiToken: 'sk-a',
+            status: 'active',
+            extraConfig: JSON.stringify({ credentialMode: 'apikey' }),
+        }).returning().get();
+
+        const accountB = await db.insert(schema.accounts).values({
+            siteId: site.id,
+            username: 'key-b',
+            accessToken: '',
+            apiToken: 'sk-b',
+            status: 'active',
+            extraConfig: JSON.stringify({ credentialMode: 'apikey' }),
+        }).returning().get();
+
+        await db.insert(schema.modelAvailability).values([
+            { accountId: accountA.id, modelName: 'gpt-4o', available: true, latencyMs: 300 },
+            { accountId: accountB.id, modelName: 'gpt-4o', available: true, latencyMs: 350 },
+        ]).run();
+
+        await db.insert(schema.accountDisabledModels).values({
+            accountId: accountA.id,
+            modelName: 'gpt-4o',
+        }).run();
+
+        const rebuild = await rebuildTokenRoutesFromAvailability();
+
+        expect(rebuild.models).toBe(1);
+
+        const route = await db.select().from(schema.tokenRoutes)
+            .where(eq(schema.tokenRoutes.modelPattern, 'gpt-4o'))
+            .get();
+        expect(route).toBeDefined();
+
+        const channels = await db.select().from(schema.routeChannels)
+            .where(eq(schema.routeChannels.routeId, route!.id))
+            .all();
+
+        expect(channels).toHaveLength(1);
+        expect(channels[0]?.accountId).toBe(accountB.id);
     });
 });

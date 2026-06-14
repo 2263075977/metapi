@@ -137,6 +137,7 @@ export default function Accounts() {
       name: string;
       latencyMs: number | null;
       disabled: boolean;
+      siteDisabled?: boolean;
       isManual?: boolean;
     }>;
     pendingDisabled: Set<string>;
@@ -663,12 +664,14 @@ export default function Accounts() {
 
   const saveModelDisabled = async () => {
     if (!modelModal.account) return;
-    const siteId = modelModal.account.siteId;
     setModelModal((s) => ({ ...s, saving: true }));
     try {
-      await api.updateSiteDisabledModels(
-        siteId,
-        Array.from(modelModal.pendingDisabled),
+      const accountDisabledModels = modelModal.models
+        .filter((model) => model.siteDisabled !== true && modelModal.pendingDisabled.has(model.name))
+        .map((model) => model.name);
+      await api.updateAccountDisabledModels(
+        modelModal.account.id,
+        accountDisabledModels,
       );
       try {
         await api.rebuildRoutes(false, false);

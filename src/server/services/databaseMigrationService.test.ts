@@ -16,6 +16,7 @@ function createDbSchemaMock() {
     sites: { __table: 'sites' },
     siteApiEndpoints: { __table: 'siteApiEndpoints' },
     siteDisabledModels: { __table: 'siteDisabledModels' },
+    accountDisabledModels: { __table: 'accountDisabledModels' },
     accounts: { __table: 'accounts' },
     accountTokens: { __table: 'accountTokens' },
     checkinLogs: { __table: 'checkinLogs' },
@@ -775,6 +776,12 @@ describe('databaseMigrationService', () => {
           modelName: 'claude-opus-4-6',
           createdAt: '2026-03-14T00:00:00.000Z',
         }],
+        accountDisabledModels: [{
+          id: 4,
+          accountId: 42,
+          modelName: 'gpt-4o',
+          createdAt: '2026-03-14T00:00:00.000Z',
+        }],
         accounts: [],
         accountTokens: [],
         checkinLogs: [],
@@ -842,6 +849,7 @@ describe('databaseMigrationService', () => {
     } as any);
 
     expect(statements.some((statement) => statement.table === 'site_disabled_models')).toBe(true);
+    expect(statements.some((statement) => statement.table === 'account_disabled_models')).toBe(true);
     expect(statements.some((statement) => statement.table === 'proxy_video_tasks')).toBe(true);
     expect(statements.some((statement) => statement.table === 'proxy_files')).toBe(true);
     expect(statements.some((statement) => statement.table === 'route_group_sources')).toBe(true);

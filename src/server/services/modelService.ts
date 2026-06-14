@@ -1352,6 +1352,18 @@ export async function rebuildTokenRoutesFromAvailability() {
     return !!disabled && disabled.has(modelName.toLowerCase());
   }
 
+  const accountDisabledModelRows = await db.select().from(schema.accountDisabledModels).all();
+  const disabledModelsByAccount = new Map<number, Set<string>>();
+  for (const row of accountDisabledModelRows) {
+    if (!disabledModelsByAccount.has(row.accountId)) disabledModelsByAccount.set(row.accountId, new Set());
+    disabledModelsByAccount.get(row.accountId)!.add(row.modelName.toLowerCase());
+  }
+
+  function isModelDisabledForAccount(accountId: number, modelName: string): boolean {
+    const disabled = disabledModelsByAccount.get(accountId);
+    return !!disabled && disabled.has(modelName.toLowerCase());
+  }
+
   // Load global brand filter
   const blockedBrandRules = getBlockedBrandRules(config.globalBlockedBrands);
 
@@ -1413,6 +1425,7 @@ export async function rebuildTokenRoutesFromAvailability() {
     if (!modelName) return;
     if (!isModelAllowedByWhitelist(modelName)) return;
     if (isModelDisabledForSite(siteId, modelName)) return;
+    if (isModelDisabledForAccount(accountId, modelName)) return;
     if (blockedBrandRules.length > 0 && isModelBlockedByBrand(modelName, blockedBrandRules)) return;
     if (!modelCandidates.has(modelName)) modelCandidates.set(modelName, new Map());
     const candidate = { accountId, tokenId, oauthRouteUnitId };

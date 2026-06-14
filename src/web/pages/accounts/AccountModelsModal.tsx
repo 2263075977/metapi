@@ -5,6 +5,7 @@ type AccountModelRow = {
   name: string;
   latencyMs: number | null;
   disabled: boolean;
+  siteDisabled?: boolean;
   isManual?: boolean;
 };
 
@@ -43,6 +44,16 @@ export default function AccountModelsModal({
   onManualInputChange,
   onAddManualModels,
 }: AccountModelsModalProps) {
+  const isModelEffectivelyDisabled = (model: AccountModelRow) =>
+    model.siteDisabled === true || modelModal.pendingDisabled.has(model.name);
+  const accountManageableModelNames = modelModal.models
+    .filter((model) => model.siteDisabled !== true)
+    .map((model) => model.name);
+  const effectiveDisabledCount = modelModal.models.filter(
+    isModelEffectivelyDisabled,
+  ).length;
+  const enabledCount = modelModal.models.length - effectiveDisabledCount;
+
   return (
     <CenteredModal
       open={modelModal.open}
@@ -87,22 +98,22 @@ export default function AccountModelsModal({
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
                   <input
                     type="checkbox"
-                    checked={modelModal.pendingDisabled.size === 0}
+                    checked={effectiveDisabledCount === 0}
                     ref={(el) => {
                       if (el) {
                         const total = modelModal.models.length;
-                        const disabled = modelModal.pendingDisabled.size;
+                        const disabled = effectiveDisabledCount;
                         el.indeterminate = disabled > 0 && disabled < total;
                       }
                     }}
                     onChange={() => {
-                      const allEnabled = modelModal.pendingDisabled.size === 0;
-                      onSetPendingDisabled(allEnabled ? new Set(modelModal.models.map((model) => model.name)) : new Set());
+                      const allEnabled = effectiveDisabledCount === 0;
+                      onSetPendingDisabled(allEnabled ? new Set(accountManageableModelNames) : new Set());
                     }}
                     style={{ accentColor: 'var(--color-primary)', width: 15, height: 15 }}
                   />
                   <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-                    已启用 <strong style={{ color: 'var(--color-text-primary)' }}>{modelModal.models.length - modelModal.pendingDisabled.size}</strong> / {modelModal.models.length} 个模型
+                    已启用 <strong style={{ color: 'var(--color-text-primary)' }}>{enabledCount}</strong> / {modelModal.models.length} 个模型
                   </span>
                 </label>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -118,7 +129,7 @@ export default function AccountModelsModal({
                     onClick={() => {
                       const next = new Set<string>();
                       for (const model of modelModal.models) {
-                        if (!modelModal.pendingDisabled.has(model.name)) next.add(model.name);
+                        if (!isModelEffectivelyDisabled(model)) next.add(model.name);
                       }
                       onSetPendingDisabled(next);
                     }}
@@ -128,7 +139,7 @@ export default function AccountModelsModal({
                     反选
                   </button>
                   <button
-                    onClick={() => onSetPendingDisabled(new Set(modelModal.models.map((model) => model.name)))}
+                    onClick={() => onSetPendingDisabled(new Set(accountManageableModelNames))}
                     className="btn btn-ghost"
                     style={{ fontSize: 12, padding: '4px 10px' }}
                   >
@@ -151,7 +162,8 @@ export default function AccountModelsModal({
                 borderRadius: 'var(--radius-sm)',
               }}>
                 {modelModal.models.map((model, idx) => {
-                  const isDisabled = modelModal.pendingDisabled.has(model.name);
+                  const siteDisabled = model.siteDisabled === true;
+                  const isDisabled = siteDisabled || modelModal.pendingDisabled.has(model.name);
                   return (
                     <label
                       key={model.name}
@@ -160,7 +172,7 @@ export default function AccountModelsModal({
                         alignItems: 'center',
                         gap: 10,
                         padding: '9px 14px',
-                        cursor: 'pointer',
+                        cursor: siteDisabled ? 'not-allowed' : 'pointer',
                         background: isDisabled ? 'var(--color-bg)' : undefined,
                         borderBottom: idx < modelModal.models.length - 1 ? '1px solid var(--color-border-light)' : undefined,
                         opacity: isDisabled ? 0.55 : 1,
@@ -170,6 +182,7 @@ export default function AccountModelsModal({
                       <input
                         type="checkbox"
                         checked={!isDisabled}
+                        disabled={siteDisabled}
                         onChange={() => onToggleModelDisabled(model.name)}
                         style={{ accentColor: 'var(--color-primary)', width: 15, height: 15, flexShrink: 0 }}
                       />
@@ -184,7 +197,9 @@ export default function AccountModelsModal({
                       {model.isManual ? (
                         <span className="badge badge-info" style={{ fontSize: 10, flexShrink: 0, padding: '0 4px' }}>手动</span>
                       ) : null}
-                      {isDisabled ? (
+                      {siteDisabled ? (
+                        <span className="badge badge-warning" style={{ fontSize: 10, flexShrink: 0 }}>站点禁用</span>
+                      ) : isDisabled ? (
                         <span className="badge badge-error" style={{ fontSize: 10, flexShrink: 0 }}>禁用</span>
                       ) : null}
                     </label>
@@ -192,7 +207,7 @@ export default function AccountModelsModal({
                 })}
               </div>
               <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
-                💡 禁用的模型将对整个站点生效，该站点下所有连接都不会使用这些模型进行代理。
+                禁用的模型仅对当前连接生效；站点级禁用模型需要在站点设置中恢复。
               </div>
             </>
           )}

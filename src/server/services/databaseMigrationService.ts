@@ -31,6 +31,7 @@ type BackupSnapshot = {
     sites: Array<Record<string, unknown>>;
     siteApiEndpoints: Array<Record<string, unknown>>;
     siteDisabledModels: Array<Record<string, unknown>>;
+    accountDisabledModels?: Array<Record<string, unknown>>;
     accounts: Array<Record<string, unknown>>;
     accountTokens: Array<Record<string, unknown>>;
     checkinLogs: Array<Record<string, unknown>>;
@@ -60,6 +61,7 @@ export interface DatabaseMigrationSummary {
     sites: number;
     siteApiEndpoints: number;
     siteDisabledModels: number;
+    accountDisabledModels: number;
     accounts: number;
     accountTokens: number;
     tokenRoutes: number;
@@ -253,6 +255,7 @@ async function toBackupSnapshot(): Promise<BackupSnapshot> {
       sites: await db.select().from(schema.sites).all() as Array<Record<string, unknown>>,
       siteApiEndpoints: await db.select().from(schema.siteApiEndpoints).all() as Array<Record<string, unknown>>,
       siteDisabledModels: await db.select().from(schema.siteDisabledModels).all() as Array<Record<string, unknown>>,
+      accountDisabledModels: await db.select().from(schema.accountDisabledModels).all() as Array<Record<string, unknown>>,
       accounts: await db.select().from(schema.accounts).all() as Array<Record<string, unknown>>,
       accountTokens: await db.select().from(schema.accountTokens).all() as Array<Record<string, unknown>>,
       checkinLogs: await db.select().from(schema.checkinLogs).all() as Array<Record<string, unknown>>,
@@ -291,6 +294,7 @@ async function clearTargetData(client: SqlClient): Promise<void> {
     'route_group_sources',
     'token_model_availability',
     'model_availability',
+    'account_disabled_models',
     'checkin_logs',
     'proxy_logs',
     'proxy_video_tasks',
@@ -409,6 +413,19 @@ function buildStatements(
         serializeColumnValue('accounts', 'extra_config', row.extraConfig, contract),
         asNullableString(row.createdAt),
         asNullableString(row.updatedAt),
+      ],
+    });
+  }
+
+  for (const row of snapshot.accounts.accountDisabledModels || []) {
+    statements.push({
+      table: 'account_disabled_models',
+      columns: ['id', 'account_id', 'model_name', 'created_at'],
+      values: [
+        asNumber(row.id, 0),
+        asNumber(row.accountId, 0),
+        asNullableString(row.modelName),
+        asNullableString(row.createdAt),
       ],
     });
   }
@@ -700,6 +717,7 @@ async function syncPostgresSequences(client: SqlClient): Promise<void> {
     'sites',
     'site_api_endpoints',
     'site_disabled_models',
+    'account_disabled_models',
     'accounts',
     'account_tokens',
     'checkin_logs',
@@ -768,6 +786,7 @@ export async function migrateCurrentDatabase(input: DatabaseMigrationInput): Pro
       sites: snapshot.accounts.sites.length,
       siteApiEndpoints: snapshot.accounts.siteApiEndpoints.length,
       siteDisabledModels: snapshot.accounts.siteDisabledModels.length,
+      accountDisabledModels: snapshot.accounts.accountDisabledModels?.length ?? 0,
       accounts: snapshot.accounts.accounts.length,
       accountTokens: snapshot.accounts.accountTokens.length,
       tokenRoutes: snapshot.accounts.tokenRoutes.length,

@@ -17,6 +17,7 @@ describe('schema contract generation', () => {
       defaultValue: "'ready'",
     });
     expect(contract.tables.site_disabled_models).toBeDefined();
+    expect(contract.tables.account_disabled_models).toBeDefined();
     expect(contract.tables.site_announcements).toBeUndefined();
     expect(contract.tables.downstream_api_keys).toBeDefined();
     expect(contract.tables.proxy_files).toBeDefined();
@@ -53,6 +54,13 @@ describe('schema contract generation', () => {
     );
     expect(contract.uniques).toContainEqual(
       expect.objectContaining({
+        name: 'account_disabled_models_account_model_unique',
+        table: 'account_disabled_models',
+        columns: ['account_id', 'model_name'],
+      }),
+    );
+    expect(contract.uniques).toContainEqual(
+      expect.objectContaining({
         name: 'model_availability_account_model_unique',
         table: 'model_availability',
         columns: ['account_id', 'model_name'],
@@ -63,6 +71,14 @@ describe('schema contract generation', () => {
         table: 'site_disabled_models',
         columns: ['site_id'],
         referencedTable: 'sites',
+        referencedColumns: ['id'],
+      }),
+    );
+    expect(contract.foreignKeys).toContainEqual(
+      expect.objectContaining({
+        table: 'account_disabled_models',
+        columns: ['account_id'],
+        referencedTable: 'accounts',
         referencedColumns: ['id'],
       }),
     );

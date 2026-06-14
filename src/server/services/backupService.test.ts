@@ -34,6 +34,7 @@ describe('backupService', () => {
     await db.delete(schema.modelAvailability).run();
     await db.delete(schema.proxyLogs).run();
     await db.delete(schema.checkinLogs).run();
+    await db.delete(schema.accountDisabledModels).run();
     await db.delete(schema.siteDisabledModels).run();
     await db.delete(schema.accountTokens).run();
     await db.delete(schema.accounts).run();
@@ -154,6 +155,12 @@ describe('backupService', () => {
       createdAt: now,
     }).run();
 
+    await db.insert(schema.accountDisabledModels).values({
+      accountId: account.id,
+      modelName: 'gpt-account-hidden',
+      createdAt: now,
+    }).run();
+
     await db.insert(schema.siteApiEndpoints).values({
       siteId: site.id,
       url: 'https://api-roundtrip.example.com',
@@ -215,6 +222,9 @@ describe('backupService', () => {
     expect(exported.accounts.siteDisabledModels).toEqual([
       { siteId: site.id, modelName: 'gpt-hidden' },
     ]);
+    expect(exported.accounts.accountDisabledModels).toEqual([
+      { accountId: account.id, modelName: 'gpt-account-hidden' },
+    ]);
     expect(exported.accounts.siteApiEndpoints).toEqual([
       expect.objectContaining({
         siteId: site.id,
@@ -266,6 +276,7 @@ describe('backupService', () => {
     const restoredRoute = await db.select().from(schema.tokenRoutes).where(eq(schema.tokenRoutes.id, route.id)).get();
     const restoredChannel = await db.select().from(schema.routeChannels).where(eq(schema.routeChannels.routeId, route.id)).get();
     const restoredDisabledModels = await db.select().from(schema.siteDisabledModels).all();
+    const restoredAccountDisabledModels = await db.select().from(schema.accountDisabledModels).all();
     const restoredModelAvailability = await db.select().from(schema.modelAvailability).all();
     const restoredDownstreamKeys = await db.select().from(schema.downstreamApiKeys).all();
 
@@ -294,6 +305,9 @@ describe('backupService', () => {
     expect(restoredChannel?.sourceModel).toBe('gpt-4o');
     expect(restoredDisabledModels).toEqual([
       expect.objectContaining({ siteId: site.id, modelName: 'gpt-hidden' }),
+    ]);
+    expect(restoredAccountDisabledModels).toEqual([
+      expect.objectContaining({ accountId: account.id, modelName: 'gpt-account-hidden' }),
     ]);
     expect(restoredModelAvailability.some((row) => row.modelName === 'gpt-manual' && row.isManual)).toBe(true);
     expect(restoredModelAvailability.some((row) => row.modelName === 'gpt-discovered' && !row.isManual)).toBe(true);

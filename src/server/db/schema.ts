@@ -85,6 +85,16 @@ export const accounts = sqliteTable('accounts', {
   oauthIdentityIdx: index('accounts_oauth_identity_idx').on(table.oauthProvider, table.oauthAccountKey, table.oauthProjectId),
 }));
 
+export const accountDisabledModels = sqliteTable('account_disabled_models', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  accountId: integer('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  modelName: text('model_name').notNull(),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+}, (table) => ({
+  accountModelUnique: uniqueIndex('account_disabled_models_account_model_unique').on(table.accountId, table.modelName),
+  accountIdIdx: index('account_disabled_models_account_id_idx').on(table.accountId),
+}));
+
 export const accountTokens = sqliteTable('account_tokens', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   accountId: integer('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),

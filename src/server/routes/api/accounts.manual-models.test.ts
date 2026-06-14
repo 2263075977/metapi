@@ -34,6 +34,8 @@ describe('accounts manual models endpoint', () => {
     await db.delete(schema.tokenRoutes).run();
     await db.delete(schema.tokenModelAvailability).run();
     await db.delete(schema.modelAvailability).run();
+    await db.delete(schema.accountDisabledModels).run();
+    await db.delete(schema.siteDisabledModels).run();
     await db.delete(schema.accountTokens).run();
     await db.delete(schema.accounts).run();
     await db.delete(schema.sites).run();
@@ -177,6 +179,108 @@ describe('accounts manual models endpoint', () => {
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({
       message: 'Invalid models. Expected string[].',
+    });
+  });
+
+  it('saves disabled models for one account without changing another account on the same site', async () => {
+    const site = await db.insert(schema.sites).values({
+      name: 'Shared Site',
+      url: 'https://shared.example.com',
+      platform: 'new-api',
+    }).returning().get();
+
+    const accountA = await db.insert(schema.accounts).values({
+      siteId: site.id,
+      username: 'key-a',
+      accessToken: '',
+      apiToken: 'sk-a',
+    }).returning().get();
+
+    const accountB = await db.insert(schema.accounts).values({
+      siteId: site.id,
+      username: 'key-b',
+      accessToken: '',
+      apiToken: 'sk-b',
+    }).returning().get();
+
+    await db.insert(schema.modelAvailability).values([
+      { accountId: accountA.id, modelName: 'gpt-4o', available: true },
+      { accountId: accountB.id, modelName: 'gpt-4o', available: true },
+    ]).run();
+
+    const saveResponse = await app.inject({
+      method: 'PUT',
+      url: `/api/accounts/${accountA.id}/models/disabled`,
+      payload: { models: ['gpt-4o'] },
+    });
+
+    expect(saveResponse.statusCode).toBe(200);
+    expect(saveResponse.json()).toMatchObject({
+      accountId: accountA.id,
+      models: ['gpt-4o'],
+    });
+
+    const accountAModels = (await app.inject({
+      method: 'GET',
+      url: `/api/accounts/${accountA.id}/models`,
+    })).json();
+    const accountBModels = (await app.inject({
+      method: 'GET',
+      url: `/api/accounts/${accountB.id}/models`,
+    })).json();
+
+    expect(accountAModels.models).toEqual([
+      expect.objectContaining({ name: 'gpt-4o', disabled: true, siteDisabled: false }),
+    ]);
+    expect(accountBModels.models).toEqual([
+      expect.objectContaining({ name: 'gpt-4o', disabled: false, siteDisabled: false }),
+    ]);
+
+    const siteDisabledRows = await db.select().from(schema.siteDisabledModels).all();
+    expect(siteDisabledRows).toHaveLength(0);
+  });
+
+  it('reports site-level disabled models separately from account-level disabled models', async () => {
+    const site = await db.insert(schema.sites).values({
+      name: 'Shared Site',
+      url: 'https://shared-site-disabled.example.com',
+      platform: 'new-api',
+    }).returning().get();
+
+    const account = await db.insert(schema.accounts).values({
+      siteId: site.id,
+      username: 'key-a',
+      accessToken: '',
+      apiToken: 'sk-a',
+    }).returning().get();
+
+    await db.insert(schema.modelAvailability).values({
+      accountId: account.id,
+      modelName: 'gpt-4o',
+      available: true,
+    }).run();
+    await db.insert(schema.siteDisabledModels).values({
+      siteId: site.id,
+      modelName: 'gpt-4o',
+    }).run();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/accounts/${account.id}/models`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      disabledCount: 1,
+      accountDisabledCount: 0,
+      siteDisabledCount: 1,
+      models: [
+        expect.objectContaining({
+          name: 'gpt-4o',
+          disabled: false,
+          siteDisabled: true,
+        }),
+      ],
     });
   });
 });

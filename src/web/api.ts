@@ -528,6 +528,11 @@ export const api = {
   refreshBalance: (id: number) =>
     request(`/api/accounts/${id}/balance`, { method: "POST" }),
   getAccountModels: (id: number) => request(`/api/accounts/${id}/models`),
+  updateAccountDisabledModels: (accountId: number, models: string[]) =>
+    request(`/api/accounts/${accountId}/models/disabled`, {
+      method: "PUT",
+      body: JSON.stringify({ models }),
+    }),
   addAccountAvailableModels: (accountId: number, models: string[]) =>
     request(`/api/accounts/${accountId}/models/manual`, {
       method: "POST",

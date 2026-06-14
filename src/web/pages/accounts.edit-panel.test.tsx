@@ -12,6 +12,7 @@ const { apiMock, toastMock } = vi.hoisted(() => ({
     getAccountsSnapshot: vi.fn(),
     getSites: vi.fn(),
     updateAccount: vi.fn(),
+    updateAccountDisabledModels: vi.fn(),
     updateSiteDisabledModels: vi.fn(),
     rebuildRoutes: vi.fn(),
     refreshAccountHealth: vi.fn(),
@@ -77,6 +78,7 @@ describe('Accounts edit panel', () => {
       },
     ]);
     apiMock.updateAccount.mockResolvedValue({ success: true });
+    apiMock.updateAccountDisabledModels.mockResolvedValue({ success: true });
     apiMock.updateSiteDisabledModels.mockResolvedValue({ success: true });
     apiMock.rebuildRoutes.mockResolvedValue({ success: true });
     apiMock.refreshAccountHealth.mockResolvedValue({ success: true });
@@ -297,6 +299,74 @@ describe('Accounts edit panel', () => {
     }
   });
 
+  it('does not save site-level disabled models as account-level disabled models', async () => {
+    apiMock.getAccountModels.mockResolvedValue({
+      siteId: 1,
+      siteName: 'Site A',
+      models: [
+        { name: 'gpt-4o', latencyMs: 120, disabled: false, siteDisabled: false },
+        { name: 'claude-opus', latencyMs: 90, disabled: false, siteDisabled: true },
+      ],
+      totalCount: 2,
+      disabledCount: 1,
+      accountDisabledCount: 0,
+      siteDisabledCount: 1,
+    });
+
+    let root!: WebTestRenderer;
+    try {
+      await act(async () => {
+        root = create(
+          <MemoryRouter initialEntries={['/accounts']}>
+            <ToastProvider>
+              <Accounts />
+            </ToastProvider>
+          </MemoryRouter>,
+        );
+      });
+      await flushMicrotasks();
+
+      const modelButton = root.root.find((node) => (
+        node.type === 'button'
+        && typeof node.props.onClick === 'function'
+        && typeof node.props.className === 'string'
+        && node.props.className.includes('btn-link-info')
+        && collectText(node).trim() === '模型'
+      ));
+
+      await act(async () => {
+        await modelButton.props.onClick();
+      });
+      await flushMicrotasks();
+
+      const disableAllButton = root.root.find((node) => (
+        node.type === 'button'
+        && typeof node.props.onClick === 'function'
+        && collectText(node).trim() === '全部禁用'
+      ));
+
+      await act(async () => {
+        disableAllButton.props.onClick();
+      });
+
+      const saveButtons = root.root.findAll((node) => (
+        node.type === 'button'
+        && typeof node.props.onClick === 'function'
+        && collectText(node).trim() === '保存'
+      ));
+
+      await act(async () => {
+        await saveButtons[saveButtons.length - 1]!.props.onClick();
+      });
+      await flushMicrotasks();
+
+      expect(apiMock.updateAccountDisabledModels).toHaveBeenCalledWith(1, ['gpt-4o']);
+      expect(apiMock.updateSiteDisabledModels).not.toHaveBeenCalled();
+    } finally {
+      root?.unmount();
+    }
+  });
+
   it('reports route rebuild failure without claiming success', async () => {
     apiMock.getAccountModels.mockResolvedValue({
       siteId: 1,
@@ -344,7 +414,8 @@ describe('Accounts edit panel', () => {
       });
       await flushMicrotasks();
 
-      expect(apiMock.updateSiteDisabledModels).toHaveBeenCalledWith(1, []);
+      expect(apiMock.updateAccountDisabledModels).toHaveBeenCalledWith(1, []);
+      expect(apiMock.updateSiteDisabledModels).not.toHaveBeenCalled();
       expect(apiMock.rebuildRoutes).toHaveBeenCalledWith(false, false);
       expect(toastMock.error).toHaveBeenCalledWith('模型禁用设置已保存，但路由重建失败，请手动刷新路由');
       expect(toastMock.success).not.toHaveBeenCalledWith('模型禁用设置已保存，路由已重建');
@@ -353,4 +424,3 @@ describe('Accounts edit panel', () => {
     }
   });
 });
-
